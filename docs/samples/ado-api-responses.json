@@ -1453,11 +1453,11 @@
   "environments": {
     "_endpoint": "GET https://dev.azure.com/contoso-financial/shared-ci-platform/_apis/pipelines/environments?api-version=7.1",
     "_description": "Deployment environments with approval/check configurations. These are configured in ADO's UI and gate deployments — they must be recreated as GitHub Environments with equivalent protection rules.",
-    "count": 5,
-    "value": [
-      {
-        "id": 1,
-        "name": "dev",
+        "count": 6,
+        "value": [
+          {
+            "id": 1,
+            "name": "dev",
         "description": "Development environment",
         "resources": [],
         "checks": [],
