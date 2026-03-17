@@ -1,0 +1,41 @@
+# Data science model build template
+# Created by: team-quant
+# NOTE: This is nearly identical to python-batch.yml and build-python.yml
+#       in this directory. Nobody remembers why three exist.
+
+parameters:
+  - name: pythonVersion
+    type: string
+    default: '3.10'
+  - name: requirementsFile
+    type: string
+    default: 'requirements-ds.txt'
+  - name: artifactName
+    type: string
+    default: 'ds-model-package'
+
+steps:
+  - task: UsePythonVersion@0
+    displayName: 'Use Python ${{ parameters.pythonVersion }}'
+    inputs:
+      versionSpec: ${{ parameters.pythonVersion }}
+
+  - script: |
+      python -m pip install --upgrade pip
+      pip install -r ${{ parameters.requirementsFile }}
+      pip install numpy pandas scipy scikit-learn
+    displayName: 'Install data science dependencies'
+
+  - script: |
+      pytest tests/ -v --tb=short
+    displayName: 'Run tests'
+
+  - script: |
+      python setup.py sdist bdist_wheel
+    displayName: 'Build package'
+
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish model artifacts'
+    inputs:
+      pathToPublish: 'dist/'
+      artifactName: ${{ parameters.artifactName }}

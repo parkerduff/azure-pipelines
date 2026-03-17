@@ -1,0 +1,41 @@
+# Notebook package build template
+# Created by: team-quant
+# NOTE: This is nearly identical to ds-model-build.yml and build-python.yml
+#       Appears to have been copied and renamed for a specific project.
+
+parameters:
+  - name: pythonVersion
+    type: string
+    default: '3.10'
+  - name: requirementsFile
+    type: string
+    default: 'requirements-ds.txt'
+  - name: artifactName
+    type: string
+    default: 'notebook-package'
+
+steps:
+  - task: UsePythonVersion@0
+    displayName: 'Use Python ${{ parameters.pythonVersion }}'
+    inputs:
+      versionSpec: ${{ parameters.pythonVersion }}
+
+  - script: |
+      python -m pip install --upgrade pip
+      pip install -r ${{ parameters.requirementsFile }}
+      pip install numpy pandas scipy scikit-learn jupyter
+    displayName: 'Install dependencies'
+
+  - script: |
+      pytest tests/ -v --tb=short
+    displayName: 'Run tests'
+
+  - script: |
+      python setup.py sdist bdist_wheel
+    displayName: 'Build package'
+
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish notebook package'
+    inputs:
+      pathToPublish: 'dist/'
+      artifactName: ${{ parameters.artifactName }}

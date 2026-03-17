@@ -1,0 +1,77 @@
+# portfolio-api canary pipeline
+# Stack: Java 17 / Maven
+# Template source: central (conditional branch selection)
+# Owner: team-quant
+#
+# This pipeline uses a parameter to select which template branch to use.
+# The team uses this for testing template changes before committing to them.
+
+trigger: none
+
+parameters:
+  - name: templateBranch
+    displayName: 'Template branch to use'
+    type: string
+    default: 'main'
+    values:
+      - main
+      - master
+      - staging/preprod
+      - staging/release-hardening
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  artifactName: 'portfolio-api-canary'
+  templates_branch: ${{ parameters.templateBranch }}
+
+resources:
+  repositories:
+    - repository: templates_main
+      type: git
+      name: shared-ci-platform
+      ref: main
+    - repository: templates_master
+      type: git
+      name: shared-ci-platform
+      ref: master
+    - repository: templates_preprod
+      type: git
+      name: shared-ci-platform
+      ref: staging/preprod
+    - repository: templates_hardened
+      type: git
+      name: shared-ci-platform
+      ref: staging/release-hardening
+
+stages:
+  - stage: Build
+    displayName: 'Build portfolio-api (canary - ${{ parameters.templateBranch }})'
+    jobs:
+      - job: build
+        steps:
+          # Conditional template selection based on parameter
+          - ${{ if eq(parameters.templateBranch, 'main') }}:
+            - template: templates/build/build-java.yml@templates_main
+              parameters:
+                jdkVersion: '17'
+                artifactName: $(artifactName)
+
+          - ${{ if eq(parameters.templateBranch, 'master') }}:
+            - template: templates/build/build-java.yml@templates_master
+              parameters:
+                jdkVersion: '17'
+                artifactName: $(artifactName)
+
+          - ${{ if eq(parameters.templateBranch, 'staging/preprod') }}:
+            - template: templates/build/build-java.yml@templates_preprod
+              parameters:
+                jdkVersion: '17'
+                artifactName: $(artifactName)
+
+          - ${{ if eq(parameters.templateBranch, 'staging/release-hardening') }}:
+            - template: templates/build/build-java.yml@templates_hardened
+              parameters:
+                jdkVersion: '17'
+                artifactName: $(artifactName)
