@@ -2,6 +2,7 @@
 # Created by: team-reporting
 # Reason: Needed extra compliance metadata generation that central templates don't provide
 # This template wraps the central build and adds compliance steps
+# HOTFIX: Added audit trail logging and pre-build compliance validation (2024-07)
 
 parameters:
   - name: language
@@ -27,7 +28,18 @@ steps:
   - script: |
       echo "Build initiated with compliance level: ${{ parameters.complianceLevel }}"
       echo "Language: ${{ parameters.language }}"
-    displayName: 'Log compliance context'
+      echo "Audit trail: $(Build.BuildId) | $(Build.RequestedFor) | $(Build.SourceBranch)"
+      echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    displayName: 'Log compliance context with audit trail'
+
+  - script: |
+      echo "Pre-build compliance validation..."
+      python $(Build.SourcesDirectory)/build-tools/compliance/generate_metadata.py \
+        --artifact pre-build-check \
+        --compliance-level ${{ parameters.complianceLevel }} \
+        --build-id $(Build.BuildId) \
+        --store compliance-store
+    displayName: 'Pre-build compliance validation'
 
   - ${{ if eq(parameters.language, 'python') }}:
     - task: UsePythonVersion@0
@@ -57,6 +69,12 @@ steps:
           --build-id $(Build.BuildId) \
           --store compliance-store
       displayName: 'Generate compliance metadata'
+
+    - script: |
+        echo "Generating audit trail record..."
+        echo '{"build_id": "$(Build.BuildId)", "compliance_level": "${{ parameters.complianceLevel }}", "status": "complete"}' \
+          > $(Build.ArtifactStagingDirectory)/audit-trail.json
+      displayName: 'Write audit trail record'
 
   - task: PublishBuildArtifacts@1
     displayName: 'Publish artifacts'
