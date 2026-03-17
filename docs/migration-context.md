@@ -7,6 +7,11 @@ the organization. It has evolved organically over approximately five years,
 starting as a clean set of shared build templates and growing into a complex
 ecosystem of templates, scripts, and operational workflows.
 
+The original template architecture was designed and implemented by an
+external contractor. When the engagement ended, maintenance was picked up
+ad-hoc by various internal teams. No single team owns the full template
+surface today, and the original design decisions are poorly documented.
+
 ## Current State
 
 The platform currently includes:
@@ -50,6 +55,25 @@ The same build logic exists in multiple places:
 Several pipelines are not software builds at all. They use CI infrastructure
 for compute-intensive jobs, data processing, and business reporting.
 These need to be identified and handled separately during migration.
+
+### On-Premises Build Worker Misuse
+
+The organization maintains self-hosted agent pools (`linux-build-workers`,
+`high-memory-pool`) intended for CI builds. However, teams have discovered
+that these long-running on-prem agents provide free, always-available compute
+with network access to internal systems. As a result:
+
+- Scheduled data exports run on build workers instead of dedicated job infrastructure
+- Monte Carlo simulations and scenario sweeps use `high-memory-pool` agents
+- Jupyter notebook execution happens nightly on `linux-build-workers`
+- Compliance backfill jobs run on build workers because they need access to `compliance-store`
+
+Teams avoid the dedicated night-jobs infrastructure because it requires
+separate provisioning and approval. Build workers "just work."
+
+This creates a migration complication: these workloads cannot simply move
+to GitHub Actions hosted runners. They require network access to internal
+systems and often exceed hosted runner time limits.
 
 ### Inconsistent Template References
 

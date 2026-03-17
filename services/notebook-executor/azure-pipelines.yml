@@ -19,7 +19,10 @@ schedules:
     always: true
 
 pool:
-  vmImage: 'ubuntu-latest'
+  name: 'linux-build-workers'
+  demands:
+    - Agent.OS -equals Linux
+    - python3
 
 variables:
   notebookDir: 'services/notebook-executor/notebooks'

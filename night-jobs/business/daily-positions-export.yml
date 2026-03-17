@@ -14,7 +14,9 @@ schedules:
     always: true
 
 pool:
-  vmImage: 'ubuntu-latest'
+  name: 'linux-build-workers'
+  demands:
+    - Agent.OS -equals Linux
 
 variables:
   exportDate: $[format('{0:yyyy-MM-dd}', pipeline.startTime)]

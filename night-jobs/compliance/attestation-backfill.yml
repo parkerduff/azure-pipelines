@@ -15,7 +15,9 @@ schedules:
     always: true
 
 pool:
-  vmImage: 'ubuntu-latest'
+  name: 'linux-build-workers'
+  demands:
+    - Agent.OS -equals Linux
 
 jobs:
   - job: BackfillAttestations

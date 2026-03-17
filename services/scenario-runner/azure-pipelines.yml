@@ -34,7 +34,9 @@ parameters:
       - json
 
 pool:
-  vmImage: 'ubuntu-latest'
+  name: 'high-memory-pool'
+  demands:
+    - Agent.OS -equals Linux
 
 jobs:
   - job: RunSimulations
