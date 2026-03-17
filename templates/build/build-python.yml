@@ -1,6 +1,7 @@
 # Central Python build template
 # Maintained by: shared-ci-platform team
 # Last reviewed: 2024-06
+# Modified by team-quant: added conda support, GPU pool option, extended timeouts
 
 parameters:
   - name: pythonVersion
@@ -27,6 +28,18 @@ parameters:
   - name: enableLinting
     type: boolean
     default: true
+  - name: useConda
+    type: boolean
+    default: false
+  - name: condaEnvironmentFile
+    type: string
+    default: 'environment.yml'
+  - name: useGpuPool
+    type: boolean
+    default: false
+  - name: timeoutMinutes
+    type: number
+    default: 60
 
 steps:
   - task: UsePythonVersion@0
@@ -34,10 +47,17 @@ steps:
     inputs:
       versionSpec: ${{ parameters.pythonVersion }}
 
-  - script: |
-      python -m pip install --upgrade pip setuptools wheel
-      pip install -r ${{ parameters.requirementsFile }}
-    displayName: 'Install dependencies'
+  - ${{ if eq(parameters.useConda, true) }}:
+    - script: |
+        conda env create -f ${{ parameters.condaEnvironmentFile }} || conda env update -f ${{ parameters.condaEnvironmentFile }}
+        conda activate $(basename ${{ parameters.condaEnvironmentFile }} .yml)
+      displayName: 'Setup conda environment'
+
+  - ${{ if eq(parameters.useConda, false) }}:
+    - script: |
+        python -m pip install --upgrade pip setuptools wheel
+        pip install -r ${{ parameters.requirementsFile }}
+      displayName: 'Install dependencies'
 
   - ${{ if eq(parameters.enableLinting, true) }}:
     - script: |
