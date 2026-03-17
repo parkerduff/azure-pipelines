@@ -1,11 +1,12 @@
 # Central Node.js build template
 # Maintained by: shared-ci-platform team
 # Last reviewed: 2024-07
+# Modified by team-frontend: SSR support, Storybook build, custom webpack
 
 parameters:
   - name: nodeVersion
     type: string
-    default: '20.x'
+    default: '18.x'
   - name: packageManager
     type: string
     default: 'npm'
@@ -24,6 +25,12 @@ parameters:
   - name: artifactName
     type: string
     default: 'node-dist'
+  - name: enableSSR
+    type: boolean
+    default: true
+  - name: buildStorybook
+    type: boolean
+    default: false
 
 steps:
   - task: NodeTool@0
@@ -41,6 +48,14 @@ steps:
 
   - script: ${{ parameters.packageManager }} run ${{ parameters.buildScript }}
     displayName: 'Build project'
+
+  - ${{ if eq(parameters.enableSSR, true) }}:
+    - script: ${{ parameters.packageManager }} run build:ssr
+      displayName: 'Build SSR bundle'
+
+  - ${{ if eq(parameters.buildStorybook, true) }}:
+    - script: ${{ parameters.packageManager }} run build-storybook
+      displayName: 'Build Storybook'
 
   - ${{ if eq(parameters.runTests, true) }}:
     - script: ${{ parameters.packageManager }} test -- --ci --reporters=jest-junit
