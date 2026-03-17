@@ -55,7 +55,7 @@ steps:
           --artifact ${{ parameters.artifactName }} \
           --compliance-level ${{ parameters.complianceLevel }} \
           --build-id $(Build.BuildId) \
-          --store compliance-store
+          --store attestation-database
       displayName: 'Generate compliance metadata'
 
   - task: PublishBuildArtifacts@1

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Scan compliance-store for missing attestation records.
+Scan attestation-database for missing attestation records.
 """
 
 import argparse
@@ -12,7 +12,7 @@ def scan_gaps(store: str, lookback_days: int, output_path: str):
     """Scan for attestation gaps."""
     print(f"Scanning {store} for gaps (last {lookback_days} days)")
 
-    # In production, this would query compliance-store API
+    # In production, this would query attestation-database API
     gaps = {
         "store": store,
         "lookback_days": lookback_days,

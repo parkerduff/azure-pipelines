@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Backfill missing attestation records in compliance-store.
+Backfill missing attestation records in attestation-database.
 """
 
 import argparse

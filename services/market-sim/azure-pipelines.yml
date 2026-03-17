@@ -69,5 +69,5 @@ stages:
         steps:
           - script: |
               echo "Deploying market-sim to compute cluster..."
-              echo "This deployment is managed outside release-orchestrator"
+              echo "This deployment is managed outside D2"
             displayName: 'Deploy to cluster'

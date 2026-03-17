@@ -1,7 +1,7 @@
 # Compliance attestation backfill
 # NON-BUILD WORKLOAD
 # Scans for missing compliance attestations and regenerates them
-# from build metadata stored in compliance-store.
+# from build metadata stored in attestation-database.
 # Runs weekly on Sunday night.
 
 trigger: none
@@ -33,9 +33,9 @@ jobs:
         displayName: 'Install dependencies'
 
       - script: |
-          echo "Scanning compliance-store for gaps..."
+          echo "Scanning attestation-database for gaps..."
           python night-jobs/compliance/scripts/scan_attestation_gaps.py \
-            --store compliance-store \
+            --store attestation-database \
             --lookback-days 30 \
             --output $(Build.ArtifactStagingDirectory)/gaps.json
         displayName: 'Scan for attestation gaps'
@@ -44,7 +44,7 @@ jobs:
           echo "Backfilling missing attestations..."
           python night-jobs/compliance/scripts/backfill_attestations.py \
             --gaps $(Build.ArtifactStagingDirectory)/gaps.json \
-            --store compliance-store \
+            --store attestation-database \
             --dry-run false
         displayName: 'Regenerate attestations'
         timeoutInMinutes: 120
@@ -54,7 +54,7 @@ jobs:
             --artifact attestation-backfill \
             --compliance-level standard \
             --build-id $(Build.BuildId) \
-            --store compliance-store
+            --store attestation-database
         displayName: 'Record backfill metadata'
 
       - task: PublishBuildArtifacts@1

@@ -66,7 +66,7 @@ with network access to internal systems. As a result:
 - Scheduled data exports run on build workers instead of dedicated job infrastructure
 - Monte Carlo simulations and scenario sweeps use `high-memory-pool` agents
 - Jupyter notebook execution happens nightly on `linux-build-workers`
-- Compliance backfill jobs run on build workers because they need access to `compliance-store`
+- Compliance backfill jobs run on build workers because they need access to `attestation-database`
 
 Teams avoid the dedicated night-jobs infrastructure because it requires
 separate provisioning and approval. Build workers "just work."

@@ -3,7 +3,7 @@
 Generate compliance attestation records.
 
 Creates attestation documents for build artifacts and uploads
-them to compliance-store. Required for production deployments.
+them to attestation-database. Required for production deployments.
 """
 
 import argparse
@@ -52,8 +52,8 @@ def generate_attestation(artifact: str, env: str, build_id: str, hotfix: bool = 
 
     print(f"  Written to: {attestation_path}")
 
-    # In production, this would also POST to compliance-store
-    print("  Uploaded to compliance-store: OK")
+    # In production, this would also POST to attestation-database
+    print("  Uploaded to attestation-database: OK")
 
     return attestation
 

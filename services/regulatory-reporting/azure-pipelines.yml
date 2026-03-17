@@ -7,7 +7,7 @@
 # a compliance reporting workflow. It:
 #   - generates regulatory reports
 #   - validates compliance metadata
-#   - uploads attestation records to compliance-store
+#   - uploads attestation records to attestation-database
 #   - does NOT produce a deployable artifact
 #
 # Classification: ambiguous — appears to be a build but is really a
@@ -81,7 +81,7 @@ stages:
                 --artifact regulatory-reports \
                 --compliance-level $(complianceLevel) \
                 --build-id $(Build.BuildId) \
-                --store compliance-store
+                --store attestation-database
             displayName: 'Upload compliance metadata'
 
           - script: |
