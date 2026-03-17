@@ -1,0 +1,58 @@
+# Production release template with extra gates
+# Maintained by: shared-ci-platform team
+
+parameters:
+  - name: artifactName
+    type: string
+  - name: serviceOwner
+    type: string
+    default: 'unknown'
+
+stages:
+  - stage: PreProdValidation
+    displayName: 'Pre-production validation'
+    jobs:
+      - job: validate
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - script: |
+              echo "Running pre-prod validation for ${{ parameters.artifactName }}"
+              echo "Checking compliance-store for attestation..."
+            displayName: 'Validate compliance attestation'
+
+          - script: |
+              python $(Build.SourcesDirectory)/build-tools/scripts/compare_build_outputs.py \
+                --artifact ${{ parameters.artifactName }} \
+                --baseline $(Build.SourcesDirectory)/validation/baselines/
+            displayName: 'Compare against baseline'
+
+  - stage: ProdDeploy
+    displayName: 'Production deployment'
+    dependsOn: PreProdValidation
+    condition: succeeded()
+    jobs:
+      - deployment: deploy_prod
+        displayName: 'Deploy to production'
+        pool:
+          vmImage: 'ubuntu-latest'
+        environment: 'prod'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: ${{ parameters.artifactName }}
+
+                - script: |
+                    echo "Production deployment: ${{ parameters.artifactName }}"
+                    echo "Owner: ${{ parameters.serviceOwner }}"
+                  displayName: 'Execute production deploy'
+
+                - script: |
+                    python $(Build.SourcesDirectory)/build-tools/scripts/notify_release_orchestrator.py \
+                      --service ${{ parameters.artifactName }} \
+                      --env prod \
+                      --build-id $(Build.BuildId) \
+                      --status success
+                  displayName: 'Notify release-orchestrator'

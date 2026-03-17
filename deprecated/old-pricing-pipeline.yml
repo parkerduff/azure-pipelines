@@ -1,0 +1,36 @@
+# DEPRECATED: Old pricing-engine pipeline
+# Replaced by services/pricing-engine/azure-pipelines.yml
+# Keeping for reference — DO NOT ENABLE
+# Last used: 2023-06
+
+trigger: none
+
+pool:
+  vmImage: 'ubuntu-20.04'
+
+resources:
+  repositories:
+    - repository: templates
+      type: git
+      name: shared-ci-platform
+      ref: legacy/master-support
+
+stages:
+  - stage: Build
+    jobs:
+      - job: build
+        steps:
+          - task: UseDotNet@2
+            inputs:
+              version: '6.0.x'
+
+          - script: |
+              dotnet restore
+              dotnet build --configuration Release
+              dotnet test
+            displayName: 'Build and test'
+
+          - task: PublishBuildArtifacts@1
+            inputs:
+              pathToPublish: '$(Build.ArtifactStagingDirectory)'
+              artifactName: 'pricing-engine-old'

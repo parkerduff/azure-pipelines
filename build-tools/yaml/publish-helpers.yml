@@ -1,0 +1,38 @@
+# Shared publish helper steps
+# Used by templates that need common artifact publishing patterns
+
+parameters:
+  - name: artifactName
+    type: string
+  - name: publishPath
+    type: string
+    default: '$(Build.ArtifactStagingDirectory)'
+  - name: registerInRegistry
+    type: boolean
+    default: true
+  - name: generateAttestation
+    type: boolean
+    default: false
+
+steps:
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish ${{ parameters.artifactName }}'
+    inputs:
+      pathToPublish: ${{ parameters.publishPath }}
+      artifactName: ${{ parameters.artifactName }}
+
+  - ${{ if eq(parameters.registerInRegistry, true) }}:
+    - script: |
+        python $(Build.SourcesDirectory)/build-tools/scripts/publish_artifact.py \
+          --name ${{ parameters.artifactName }} \
+          --registry artifact-registry \
+          --build-id $(Build.BuildId)
+      displayName: 'Register in artifact-registry'
+
+  - ${{ if eq(parameters.generateAttestation, true) }}:
+    - script: |
+        python $(Build.SourcesDirectory)/build-tools/scripts/generate_attestation.py \
+          --artifact ${{ parameters.artifactName }} \
+          --env $(System.StageName) \
+          --build-id $(Build.BuildId)
+      displayName: 'Generate attestation'

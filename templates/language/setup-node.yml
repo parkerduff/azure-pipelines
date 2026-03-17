@@ -1,0 +1,11 @@
+# Language setup: Node.js
+parameters:
+  - name: version
+    type: string
+    default: '20.x'
+
+steps:
+  - task: NodeTool@0
+    displayName: 'Setup Node.js ${{ parameters.version }}'
+    inputs:
+      versionSpec: ${{ parameters.version }}

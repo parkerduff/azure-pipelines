@@ -1,0 +1,72 @@
+# scenario-runner pipeline
+# Stack: Python 3.11
+# Template source: NONE — fully inline
+# Owner: ?
+#
+# NON-BUILD WORKLOAD
+# This pipeline runs Monte Carlo simulations on CI infrastructure.
+# It is not a build — it uses ADO pipelines as a free compute grid.
+# Runs are parameterized and triggered manually or on schedule.
+
+trigger: none
+
+schedules:
+  - cron: '0 22 * * 5'
+    displayName: 'Friday evening scenario run'
+    branches:
+      include:
+        - main
+    always: true
+
+parameters:
+  - name: scenarioCount
+    type: number
+    default: 10000
+  - name: modelVersion
+    type: string
+    default: 'v2.3'
+  - name: outputFormat
+    type: string
+    default: 'parquet'
+    values:
+      - parquet
+      - csv
+      - json
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+jobs:
+  - job: RunSimulations
+    displayName: 'Execute scenario simulations'
+    timeoutInMinutes: 360
+    steps:
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.11'
+
+      - script: |
+          pip install numpy pandas scipy pyarrow
+        displayName: 'Install simulation dependencies'
+
+      - script: |
+          python services/scenario-runner/src/run_scenarios.py \
+            --count ${{ parameters.scenarioCount }} \
+            --model ${{ parameters.modelVersion }} \
+            --output-format ${{ parameters.outputFormat }} \
+            --output-dir $(Build.ArtifactStagingDirectory)/results
+        displayName: 'Run Monte Carlo simulations'
+        timeoutInMinutes: 300
+
+      - script: |
+          python services/scenario-runner/src/aggregate_results.py \
+            --input $(Build.ArtifactStagingDirectory)/results \
+            --summary $(Build.ArtifactStagingDirectory)/summary.json
+        displayName: 'Aggregate results'
+
+      - task: PublishBuildArtifacts@1
+        displayName: 'Publish simulation results'
+        inputs:
+          pathToPublish: '$(Build.ArtifactStagingDirectory)'
+          artifactName: 'scenario-results-$(Build.BuildId)'
+        condition: always()

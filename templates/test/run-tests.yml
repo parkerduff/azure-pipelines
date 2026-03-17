@@ -1,0 +1,61 @@
+# Central test execution template
+# Maintained by: shared-ci-platform team
+
+parameters:
+  - name: testFramework
+    type: string
+    default: 'generic'
+    values:
+      - pytest
+      - junit
+      - jest
+      - generic
+  - name: testResultsDir
+    type: string
+    default: '$(Build.ArtifactStagingDirectory)/test-results'
+  - name: publishResults
+    type: boolean
+    default: true
+  - name: failOnTestFailure
+    type: boolean
+    default: true
+
+steps:
+  - script: mkdir -p ${{ parameters.testResultsDir }}
+    displayName: 'Create test results directory'
+
+  - ${{ if eq(parameters.testFramework, 'pytest') }}:
+    - script: |
+        pytest tests/ \
+          --junitxml=${{ parameters.testResultsDir }}/results.xml \
+          --tb=short
+      displayName: 'Run pytest'
+
+  - ${{ if eq(parameters.testFramework, 'junit') }}:
+    - task: Maven@4
+      displayName: 'Run JUnit tests'
+      inputs:
+        goals: 'test'
+        publishJUnitResults: true
+
+  - ${{ if eq(parameters.testFramework, 'jest') }}:
+    - script: npx jest --ci --reporters=jest-junit
+      displayName: 'Run Jest tests'
+      env:
+        JEST_JUNIT_OUTPUT_DIR: ${{ parameters.testResultsDir }}
+
+  - ${{ if eq(parameters.publishResults, true) }}:
+    - task: PublishTestResults@2
+      displayName: 'Publish test results'
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '${{ parameters.testResultsDir }}/**/*.xml'
+        failTaskOnFailedTests: ${{ parameters.failOnTestFailure }}
+      condition: always()
+
+  - script: |
+      python $(Build.SourcesDirectory)/build-tools/scripts/normalize_test_results.py \
+        --input-dir ${{ parameters.testResultsDir }} \
+        --output $(Build.ArtifactStagingDirectory)/normalized-results.json
+    displayName: 'Normalize test results'
+    condition: always()

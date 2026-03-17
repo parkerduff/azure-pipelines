@@ -1,0 +1,17 @@
+# ARCHIVED: Original release workflow
+# Predates the release template system entirely.
+# This was a monolithic pipeline that handled build + test + deploy.
+# Archived Q3 2022 when release-standard.yml was introduced.
+
+trigger: none
+
+pool:
+  vmImage: 'ubuntu-20.04'
+
+stages:
+  - stage: Build
+    jobs:
+      - job: build
+        steps:
+          - script: echo "This pipeline is archived and should not be used"
+            displayName: 'ARCHIVED'

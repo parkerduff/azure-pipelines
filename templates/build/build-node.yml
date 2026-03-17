@@ -1,0 +1,71 @@
+# Central Node.js build template
+# Maintained by: shared-ci-platform team
+# Last reviewed: 2024-07
+
+parameters:
+  - name: nodeVersion
+    type: string
+    default: '20.x'
+  - name: packageManager
+    type: string
+    default: 'npm'
+    values:
+      - npm
+      - yarn
+  - name: buildScript
+    type: string
+    default: 'build'
+  - name: runTests
+    type: boolean
+    default: true
+  - name: publishArtifacts
+    type: boolean
+    default: true
+  - name: artifactName
+    type: string
+    default: 'node-dist'
+
+steps:
+  - task: NodeTool@0
+    displayName: 'Install Node.js ${{ parameters.nodeVersion }}'
+    inputs:
+      versionSpec: ${{ parameters.nodeVersion }}
+
+  - ${{ if eq(parameters.packageManager, 'npm') }}:
+    - script: npm ci
+      displayName: 'Install dependencies (npm)'
+
+  - ${{ if eq(parameters.packageManager, 'yarn') }}:
+    - script: yarn install --frozen-lockfile
+      displayName: 'Install dependencies (yarn)'
+
+  - script: ${{ parameters.packageManager }} run ${{ parameters.buildScript }}
+    displayName: 'Build project'
+
+  - ${{ if eq(parameters.runTests, true) }}:
+    - script: ${{ parameters.packageManager }} test -- --ci --reporters=jest-junit
+      displayName: 'Run tests'
+      env:
+        JEST_JUNIT_OUTPUT_DIR: $(Build.ArtifactStagingDirectory)
+
+    - task: PublishTestResults@2
+      displayName: 'Publish test results'
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '$(Build.ArtifactStagingDirectory)/junit.xml'
+      condition: always()
+
+  - ${{ if eq(parameters.publishArtifacts, true) }}:
+    - task: ArchiveFiles@2
+      displayName: 'Archive build output'
+      inputs:
+        rootFolderOrFile: 'dist/'
+        includeRootFolder: false
+        archiveType: 'tar'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/${{ parameters.artifactName }}.tar.gz'
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Upload artifacts'
+      inputs:
+        pathToPublish: '$(Build.ArtifactStagingDirectory)'
+        artifactName: ${{ parameters.artifactName }}

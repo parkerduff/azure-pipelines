@@ -1,0 +1,61 @@
+# ops-control-plane CI pipeline
+# Stack: Go 1.22
+# Template source: CUSTOM (inline YAML — no shared templates)
+# Owner: platform-team
+# NOTE: Custom pipeline — Go support was added to central templates after
+#       this service was already running its own pipeline.
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - services/ops-control-plane/**
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  GOPATH: '$(system.defaultWorkingDirectory)/go'
+  GOBIN: '$(GOPATH)/bin'
+  modulePath: 'services/ops-control-plane'
+
+stages:
+  - stage: Build
+    displayName: 'Build ops-control-plane'
+    jobs:
+      - job: build_go
+        displayName: 'Go build and test'
+        steps:
+          - task: GoTool@0
+            displayName: 'Install Go 1.22'
+            inputs:
+              version: '1.22'
+
+          - script: |
+              go mod download
+              go mod verify
+            displayName: 'Download modules'
+            workingDirectory: $(modulePath)
+
+          - script: go vet ./...
+            displayName: 'Vet'
+            workingDirectory: $(modulePath)
+
+          - script: |
+              go test ./... -v -coverprofile=coverage.out
+            displayName: 'Run tests'
+            workingDirectory: $(modulePath)
+
+          - script: |
+              CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+                go build -ldflags="-s -w" -o $(Build.ArtifactStagingDirectory)/ops-control-plane ./cmd/server
+            displayName: 'Build binary'
+            workingDirectory: $(modulePath)
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish binary'
+            inputs:
+              pathToPublish: '$(Build.ArtifactStagingDirectory)'
+              artifactName: 'ops-control-plane-binary'

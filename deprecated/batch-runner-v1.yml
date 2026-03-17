@@ -1,0 +1,42 @@
+# DEPRECATED: Original batch runner pipeline (v1)
+# Replaced by services/risk-batch and night-jobs/compute
+# This pipeline used to handle both builds AND compute jobs in one pipeline
+# which made it impossible to classify correctly.
+
+trigger: none
+
+pool:
+  vmImage: 'ubuntu-20.04'
+
+variables:
+  pythonVersion: '3.8'
+
+jobs:
+  - job: BuildAndRun
+    displayName: 'Build and execute batch'
+    timeoutInMinutes: 300
+    steps:
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: $(pythonVersion)
+
+      - script: |
+          pip install -r requirements.txt
+          python setup.py install
+        displayName: 'Install package'
+
+      - script: |
+          python -m pytest tests/ -v
+        displayName: 'Run tests'
+
+      - script: |
+          python -m batch_runner.main \
+            --config config/batch-config.yaml \
+            --date $(Build.BuildNumber)
+        displayName: 'Execute batch job'
+        timeoutInMinutes: 240
+
+      - task: PublishBuildArtifacts@1
+        inputs:
+          pathToPublish: 'output/'
+          artifactName: 'batch-output'

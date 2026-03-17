@@ -1,0 +1,48 @@
+# Alternative frontend deployment template
+# Created by: team-frontend
+# Handles CDN purge and static asset upload
+
+parameters:
+  - name: environment
+    type: string
+    values:
+      - dev
+      - staging
+      - prod
+  - name: artifactName
+    type: string
+    default: 'frontend-bundle'
+  - name: cdnPurge
+    type: boolean
+    default: true
+
+stages:
+  - stage: DeployFrontend_${{ parameters.environment }}
+    displayName: 'Deploy frontend to ${{ parameters.environment }}'
+    jobs:
+      - deployment: deploy_frontend
+        displayName: 'Deploy frontend assets'
+        pool:
+          vmImage: 'ubuntu-latest'
+        environment: '${{ parameters.environment }}-frontend'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: ${{ parameters.artifactName }}
+
+                - script: |
+                    echo "Uploading static assets to CDN..."
+                    echo "Environment: ${{ parameters.environment }}"
+                  displayName: 'Upload to CDN'
+
+                - ${{ if eq(parameters.cdnPurge, true) }}:
+                  - script: |
+                      echo "Purging CDN cache for ${{ parameters.environment }}..."
+                    displayName: 'Purge CDN cache'
+
+                - script: |
+                    echo "Verifying deployment health..."
+                    curl -sf https://${{ parameters.environment }}.example.com/health || exit 1
+                  displayName: 'Health check'

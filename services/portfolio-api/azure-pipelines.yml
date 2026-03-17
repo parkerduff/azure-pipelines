@@ -1,0 +1,47 @@
+# portfolio-api CI pipeline
+# Stack: Java 17 / Maven
+# Template source: central (master — legacy ref)
+# Owner: team-quant
+
+trigger:
+  branches:
+    include:
+      - main
+      - master
+  paths:
+    include:
+      - services/portfolio-api/**
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  artifactName: 'portfolio-api-dist'
+
+resources:
+  repositories:
+    - repository: templates
+      type: git
+      name: shared-ci-platform
+      ref: master
+
+stages:
+  - stage: Build
+    displayName: 'Build portfolio-api'
+    jobs:
+      - job: build
+        steps:
+          - template: templates/build/build-java.yml@templates
+            parameters:
+              jdkVersion: '17'
+              mavenGoal: 'package'
+              artifactName: $(artifactName)
+
+  - stage: Release
+    displayName: 'Release to staging'
+    dependsOn: Build
+    jobs:
+      - template: templates/release/release-standard.yml@templates
+        parameters:
+          environment: 'staging'
+          artifactName: $(artifactName)

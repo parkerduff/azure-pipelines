@@ -1,0 +1,82 @@
+# Central Python build template
+# Maintained by: shared-ci-platform team
+# Last reviewed: 2024-06
+
+parameters:
+  - name: pythonVersion
+    type: string
+    default: '3.11'
+  - name: requirementsFile
+    type: string
+    default: 'requirements.txt'
+  - name: runTests
+    type: boolean
+    default: true
+  - name: testFramework
+    type: string
+    default: 'pytest'
+    values:
+      - pytest
+      - unittest
+  - name: publishArtifacts
+    type: boolean
+    default: true
+  - name: artifactName
+    type: string
+    default: 'python-dist'
+  - name: enableLinting
+    type: boolean
+    default: true
+
+steps:
+  - task: UsePythonVersion@0
+    displayName: 'Use Python ${{ parameters.pythonVersion }}'
+    inputs:
+      versionSpec: ${{ parameters.pythonVersion }}
+
+  - script: |
+      python -m pip install --upgrade pip setuptools wheel
+      pip install -r ${{ parameters.requirementsFile }}
+    displayName: 'Install dependencies'
+
+  - ${{ if eq(parameters.enableLinting, true) }}:
+    - script: |
+        pip install flake8 black mypy
+        flake8 src/ --max-line-length=120
+        black --check src/
+      displayName: 'Run linting checks'
+
+  - ${{ if eq(parameters.runTests, true) }}:
+    - script: |
+        pip install pytest pytest-cov pytest-junitxml
+        pytest tests/ \
+          --junitxml=$(Build.ArtifactStagingDirectory)/test-results.xml \
+          --cov=src/ \
+          --cov-report=xml:$(Build.ArtifactStagingDirectory)/coverage.xml
+      displayName: 'Run tests with coverage'
+
+    - task: PublishTestResults@2
+      displayName: 'Publish test results'
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '$(Build.ArtifactStagingDirectory)/test-results.xml'
+      condition: always()
+
+  - ${{ if eq(parameters.publishArtifacts, true) }}:
+    - script: |
+        python setup.py sdist bdist_wheel
+        cp -r dist/ $(Build.ArtifactStagingDirectory)/dist/
+      displayName: 'Build distribution'
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Upload artifacts'
+      inputs:
+        pathToPublish: '$(Build.ArtifactStagingDirectory)'
+        artifactName: ${{ parameters.artifactName }}
+
+    - script: |
+        python $(Build.SourcesDirectory)/build-tools/scripts/publish_artifact.py \
+          --name ${{ parameters.artifactName }} \
+          --registry artifact-registry \
+          --build-id $(Build.BuildId)
+      displayName: 'Register artifact in artifact-registry'

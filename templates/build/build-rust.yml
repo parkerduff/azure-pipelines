@@ -1,0 +1,56 @@
+# Central Rust build template
+# Maintained by: shared-ci-platform team
+# Last reviewed: 2024-03
+
+parameters:
+  - name: toolchain
+    type: string
+    default: 'stable'
+  - name: cargoArgs
+    type: string
+    default: '--release'
+  - name: runTests
+    type: boolean
+    default: true
+  - name: publishArtifacts
+    type: boolean
+    default: true
+  - name: artifactName
+    type: string
+    default: 'rust-binary'
+  - name: enableClippy
+    type: boolean
+    default: true
+
+steps:
+  - script: |
+      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain ${{ parameters.toolchain }}
+      echo "##vso[task.prependpath]$HOME/.cargo/bin"
+    displayName: 'Install Rust toolchain'
+
+  - script: cargo fetch
+    displayName: 'Fetch dependencies'
+
+  - ${{ if eq(parameters.enableClippy, true) }}:
+    - script: |
+        rustup component add clippy
+        cargo clippy -- -D warnings
+      displayName: 'Run clippy lints'
+
+  - script: cargo build ${{ parameters.cargoArgs }}
+    displayName: 'Build project'
+
+  - ${{ if eq(parameters.runTests, true) }}:
+    - script: cargo test -- --test-threads=1
+      displayName: 'Run tests'
+
+  - ${{ if eq(parameters.publishArtifacts, true) }}:
+    - script: |
+        cp target/release/* $(Build.ArtifactStagingDirectory)/ 2>/dev/null || true
+      displayName: 'Stage release artifacts'
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Upload artifacts'
+      inputs:
+        pathToPublish: '$(Build.ArtifactStagingDirectory)'
+        artifactName: ${{ parameters.artifactName }}

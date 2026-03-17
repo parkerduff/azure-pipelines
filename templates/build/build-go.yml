@@ -1,0 +1,61 @@
+# Central Go build template
+# Maintained by: shared-ci-platform team
+# Last reviewed: 2024-05
+
+parameters:
+  - name: goVersion
+    type: string
+    default: '1.22'
+  - name: modulePath
+    type: string
+    default: '.'
+  - name: runTests
+    type: boolean
+    default: true
+  - name: publishArtifacts
+    type: boolean
+    default: true
+  - name: artifactName
+    type: string
+    default: 'go-binary'
+  - name: targetOS
+    type: string
+    default: 'linux'
+  - name: targetArch
+    type: string
+    default: 'amd64'
+
+steps:
+  - task: GoTool@0
+    displayName: 'Install Go ${{ parameters.goVersion }}'
+    inputs:
+      version: ${{ parameters.goVersion }}
+
+  - script: |
+      go mod download
+      go mod verify
+    displayName: 'Download and verify modules'
+    workingDirectory: ${{ parameters.modulePath }}
+
+  - script: go vet ./...
+    displayName: 'Run go vet'
+    workingDirectory: ${{ parameters.modulePath }}
+
+  - ${{ if eq(parameters.runTests, true) }}:
+    - script: |
+        go test ./... -v -coverprofile=coverage.out -json > test-results.json
+      displayName: 'Run tests'
+      workingDirectory: ${{ parameters.modulePath }}
+
+  - script: |
+      GOOS=${{ parameters.targetOS }} GOARCH=${{ parameters.targetArch }} \
+        go build -o $(Build.ArtifactStagingDirectory)/app ./cmd/...
+    displayName: 'Build binary'
+    workingDirectory: ${{ parameters.modulePath }}
+
+  - ${{ if eq(parameters.publishArtifacts, true) }}:
+    - task: PublishBuildArtifacts@1
+      displayName: 'Upload artifacts'
+      inputs:
+        pathToPublish: '$(Build.ArtifactStagingDirectory)'
+        artifactName: ${{ parameters.artifactName }}

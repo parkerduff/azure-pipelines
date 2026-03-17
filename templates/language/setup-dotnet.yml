@@ -1,0 +1,12 @@
+# Language setup: .NET
+parameters:
+  - name: version
+    type: string
+    default: '8.0.x'
+
+steps:
+  - task: UseDotNet@2
+    displayName: 'Setup .NET ${{ parameters.version }}'
+    inputs:
+      packageType: 'sdk'
+      version: ${{ parameters.version }}

@@ -1,0 +1,60 @@
+# frontend-workbench CI pipeline
+# Stack: Node.js (React)
+# Template source: alt-templates/frontend (team/frontend-custom branch)
+# Owner: team-frontend
+# NOTE: Uses alternative frontend templates, NOT central templates.
+#       team-frontend maintains their own template branch.
+
+trigger:
+  branches:
+    include:
+      - main
+      - feature/*
+  paths:
+    include:
+      - services/frontend-workbench/**
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  artifactName: 'frontend-workbench-bundle'
+
+resources:
+  repositories:
+    - repository: templates
+      type: git
+      name: shared-ci-platform
+      ref: team/frontend-custom
+
+stages:
+  - stage: Build
+    displayName: 'Build frontend-workbench'
+    jobs:
+      - job: build
+        steps:
+          - template: alt-templates/frontend/frontend-build.yml@templates
+            parameters:
+              nodeVersion: '18.x'
+              framework: 'react'
+              enableSSR: true
+              artifactName: $(artifactName)
+
+  - stage: Deploy_Dev
+    displayName: 'Deploy to dev'
+    dependsOn: Build
+    jobs:
+      - template: alt-templates/frontend/frontend-deploy.yml@templates
+        parameters:
+          environment: 'dev'
+          artifactName: $(artifactName)
+
+  - stage: Deploy_Staging
+    displayName: 'Deploy to staging'
+    dependsOn: Deploy_Dev
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - template: alt-templates/frontend/frontend-deploy.yml@templates
+        parameters:
+          environment: 'staging'
+          artifactName: $(artifactName)

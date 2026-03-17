@@ -1,0 +1,63 @@
+# Compliance attestation backfill
+# NON-BUILD WORKLOAD
+# Scans for missing compliance attestations and regenerates them
+# from build metadata stored in compliance-store.
+# Runs weekly on Sunday night.
+
+trigger: none
+
+schedules:
+  - cron: '0 3 * * 0'
+    displayName: 'Weekly attestation backfill'
+    branches:
+      include:
+        - main
+    always: true
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+jobs:
+  - job: BackfillAttestations
+    displayName: 'Backfill missing attestations'
+    timeoutInMinutes: 180
+    steps:
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.11'
+
+      - script: |
+          pip install requests pandas
+        displayName: 'Install dependencies'
+
+      - script: |
+          echo "Scanning compliance-store for gaps..."
+          python night-jobs/compliance/scripts/scan_attestation_gaps.py \
+            --store compliance-store \
+            --lookback-days 30 \
+            --output $(Build.ArtifactStagingDirectory)/gaps.json
+        displayName: 'Scan for attestation gaps'
+
+      - script: |
+          echo "Backfilling missing attestations..."
+          python night-jobs/compliance/scripts/backfill_attestations.py \
+            --gaps $(Build.ArtifactStagingDirectory)/gaps.json \
+            --store compliance-store \
+            --dry-run false
+        displayName: 'Regenerate attestations'
+        timeoutInMinutes: 120
+
+      - script: |
+          python $(Build.SourcesDirectory)/build-tools/compliance/generate_metadata.py \
+            --artifact attestation-backfill \
+            --compliance-level standard \
+            --build-id $(Build.BuildId) \
+            --store compliance-store
+        displayName: 'Record backfill metadata'
+
+      - task: PublishBuildArtifacts@1
+        displayName: 'Publish backfill report'
+        inputs:
+          pathToPublish: '$(Build.ArtifactStagingDirectory)'
+          artifactName: 'attestation-backfill-report'
+        condition: always()

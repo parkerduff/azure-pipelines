@@ -1,0 +1,54 @@
+# Alternative Python build template for data science workloads
+# Created by: team-quant
+# Reason: Central python template doesn't handle conda environments or Jupyter notebooks
+# NOTE: Same filename as templates/build/build-python.yml — causes confusion
+
+parameters:
+  - name: pythonVersion
+    type: string
+    default: '3.10'
+  - name: condaEnvironment
+    type: string
+    default: 'base'
+  - name: requirementsFile
+    type: string
+    default: 'requirements-ds.txt'
+  - name: runNotebooks
+    type: boolean
+    default: false
+  - name: artifactName
+    type: string
+    default: 'ds-package'
+
+steps:
+  - task: UsePythonVersion@0
+    displayName: 'Use Python ${{ parameters.pythonVersion }}'
+    inputs:
+      versionSpec: ${{ parameters.pythonVersion }}
+
+  - script: |
+      python -m pip install --upgrade pip
+      pip install -r ${{ parameters.requirementsFile }}
+      pip install numpy pandas scipy scikit-learn jupyter nbconvert
+    displayName: 'Install data science dependencies'
+
+  - ${{ if eq(parameters.runNotebooks, true) }}:
+    - script: |
+        find notebooks/ -name "*.ipynb" | while read nb; do
+          jupyter nbconvert --to notebook --execute "$nb" --output "$nb"
+        done
+      displayName: 'Execute validation notebooks'
+
+  - script: |
+      pytest tests/ -v --tb=short
+    displayName: 'Run tests'
+
+  - script: |
+      python setup.py sdist bdist_wheel
+    displayName: 'Build package'
+
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish data science artifacts'
+    inputs:
+      pathToPublish: 'dist/'
+      artifactName: ${{ parameters.artifactName }}

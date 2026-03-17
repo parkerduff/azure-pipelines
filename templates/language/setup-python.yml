@@ -1,0 +1,14 @@
+# Language setup: Python
+parameters:
+  - name: version
+    type: string
+    default: '3.11'
+
+steps:
+  - task: UsePythonVersion@0
+    displayName: 'Setup Python ${{ parameters.version }}'
+    inputs:
+      versionSpec: ${{ parameters.version }}
+
+  - script: python -m pip install --upgrade pip setuptools wheel
+    displayName: 'Upgrade pip'

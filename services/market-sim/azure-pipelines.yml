@@ -1,0 +1,73 @@
+# market-sim CI pipeline
+# Stack: Rust
+# Template source: CUSTOM (inline YAML — no shared templates)
+# Owner: team-quant?
+# NOTE: This pipeline does not use any shared templates.
+#       team-quant built it independently.
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - services/market-sim/**
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  CARGO_TERM_COLOR: 'always'
+  RUST_BACKTRACE: 1
+
+stages:
+  - stage: Build
+    displayName: 'Build market-sim'
+    jobs:
+      - job: build_rust
+        displayName: 'Rust build'
+        timeoutInMinutes: 30
+        steps:
+          - script: |
+              curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+              echo "##vso[task.prependpath]$HOME/.cargo/bin"
+            displayName: 'Install Rust'
+
+          - script: cargo fetch
+            displayName: 'Fetch dependencies'
+            workingDirectory: services/market-sim
+
+          - script: cargo clippy -- -D warnings
+            displayName: 'Lint with clippy'
+            workingDirectory: services/market-sim
+
+          - script: cargo build --release
+            displayName: 'Build release binary'
+            workingDirectory: services/market-sim
+
+          - script: cargo test -- --test-threads=1
+            displayName: 'Run tests'
+            workingDirectory: services/market-sim
+
+          - script: |
+              cp target/release/market-sim $(Build.ArtifactStagingDirectory)/
+            displayName: 'Stage binary'
+            workingDirectory: services/market-sim
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish market-sim binary'
+            inputs:
+              pathToPublish: '$(Build.ArtifactStagingDirectory)'
+              artifactName: 'market-sim-binary'
+
+  - stage: Deploy
+    displayName: 'Deploy market-sim'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - job: deploy
+        steps:
+          - script: |
+              echo "Deploying market-sim to compute cluster..."
+              echo "This deployment is managed outside release-orchestrator"
+            displayName: 'Deploy to cluster'

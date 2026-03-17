@@ -1,0 +1,98 @@
+# regulatory-reporting CI pipeline
+# Stack: Python 3.11
+# Template source: HYBRID — uses team-overrides + central templates
+# Owner: team-reporting
+#
+# IMPORTANT: This pipeline looks like a build pipeline but is actually
+# a compliance reporting workflow. It:
+#   - generates regulatory reports
+#   - validates compliance metadata
+#   - uploads attestation records to compliance-store
+#   - does NOT produce a deployable artifact
+#
+# Classification: ambiguous — appears to be a build but is really a
+# compliance/reporting workflow that runs on CI infrastructure.
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - services/regulatory-reporting/**
+
+schedules:
+  - cron: '0 6 * * 1-5'
+    displayName: 'Weekday morning compliance run'
+    branches:
+      include:
+        - main
+    always: true
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  complianceLevel: 'elevated'
+
+resources:
+  repositories:
+    - repository: templates
+      type: git
+      name: shared-ci-platform
+      ref: team/reporting-hotfix
+
+stages:
+  - stage: ComplianceBuild
+    displayName: 'Build compliance package'
+    jobs:
+      - job: build
+        steps:
+          - template: alt-templates/team-overrides/team-build-custom.yml@templates
+            parameters:
+              language: 'python'
+              complianceLevel: $(complianceLevel)
+              artifactName: 'regulatory-compliance-pkg'
+
+  - stage: GenerateReports
+    displayName: 'Generate regulatory reports'
+    dependsOn: ComplianceBuild
+    jobs:
+      - job: reports
+        timeoutInMinutes: 90
+        steps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.11'
+
+          - script: |
+              pip install -r services/regulatory-reporting/requirements.txt
+            displayName: 'Install dependencies'
+
+          - script: |
+              python services/regulatory-reporting/src/generate_reports.py \
+                --output-dir $(Build.ArtifactStagingDirectory)/reports \
+                --compliance-level $(complianceLevel) \
+                --date $(Build.BuildNumber)
+            displayName: 'Generate regulatory reports'
+
+          - script: |
+              python $(Build.SourcesDirectory)/build-tools/compliance/generate_metadata.py \
+                --artifact regulatory-reports \
+                --compliance-level $(complianceLevel) \
+                --build-id $(Build.BuildId) \
+                --store compliance-store
+            displayName: 'Upload compliance metadata'
+
+          - script: |
+              python $(Build.SourcesDirectory)/build-tools/scripts/generate_attestation.py \
+                --artifact regulatory-reports \
+                --env prod \
+                --build-id $(Build.BuildId)
+            displayName: 'Generate attestation record'
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish reports'
+            inputs:
+              pathToPublish: '$(Build.ArtifactStagingDirectory)/reports'
+              artifactName: 'regulatory-reports'

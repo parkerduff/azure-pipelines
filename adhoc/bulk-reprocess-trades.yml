@@ -1,0 +1,49 @@
+# Bulk trade reprocessing pipeline
+# Used periodically when trade data needs to be reprocessed after corrections
+# Triggered manually
+
+trigger: none
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+parameters:
+  - name: startDate
+    type: string
+    default: '2024-01-01'
+  - name: endDate
+    type: string
+    default: '2024-01-31'
+  - name: tradeTypes
+    type: string
+    default: 'all'
+
+jobs:
+  - job: ReprocessTrades
+    displayName: 'Bulk reprocess trades'
+    timeoutInMinutes: 480
+    steps:
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.11'
+
+      - script: |
+          pip install pandas requests pyarrow
+        displayName: 'Install dependencies'
+
+      - script: |
+          echo "Reprocessing trades from ${{ parameters.startDate }} to ${{ parameters.endDate }}"
+          echo "Trade types: ${{ parameters.tradeTypes }}"
+          python adhoc/scripts/reprocess_trades.py \
+            --start-date ${{ parameters.startDate }} \
+            --end-date ${{ parameters.endDate }} \
+            --types ${{ parameters.tradeTypes }} \
+            --output $(Build.ArtifactStagingDirectory)/reprocessed/
+        displayName: 'Reprocess trades'
+        timeoutInMinutes: 420
+
+      - task: PublishBuildArtifacts@1
+        displayName: 'Archive reprocessed data'
+        inputs:
+          pathToPublish: '$(Build.ArtifactStagingDirectory)'
+          artifactName: 'reprocessed-trades'

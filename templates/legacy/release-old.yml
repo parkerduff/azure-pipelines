@@ -1,0 +1,32 @@
+# Legacy release template
+# Predates release-standard.yml
+# Does not integrate with release-orchestrator
+# Does not generate compliance attestation
+
+parameters:
+  - name: environment
+    type: string
+    default: 'dev'
+  - name: artifactName
+    type: string
+
+stages:
+  - stage: LegacyDeploy
+    displayName: 'Legacy deploy to ${{ parameters.environment }}'
+    jobs:
+      - job: deploy
+        pool:
+          vmImage: 'ubuntu-20.04'
+        steps:
+          - task: DownloadBuildArtifacts@1
+            inputs:
+              buildType: 'current'
+              downloadType: 'single'
+              artifactName: ${{ parameters.artifactName }}
+
+          - script: |
+              echo "Legacy deployment of ${{ parameters.artifactName }}"
+              echo "Target: ${{ parameters.environment }}"
+              # NOTE: This template does NOT notify release-orchestrator.
+              # If you need release tracking, migrate to release-standard.yml
+            displayName: 'Execute legacy deployment'

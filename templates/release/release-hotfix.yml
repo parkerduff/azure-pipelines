@@ -1,0 +1,42 @@
+# Hotfix release template — bypasses standard gates
+# WARNING: Use only for critical production issues
+
+parameters:
+  - name: artifactName
+    type: string
+  - name: hotfixTicket
+    type: string
+  - name: skipComplianceCheck
+    type: boolean
+    default: false
+
+stages:
+  - stage: HotfixDeploy
+    displayName: 'Hotfix deployment'
+    jobs:
+      - deployment: hotfix
+        displayName: 'Hotfix ${{ parameters.artifactName }}'
+        pool:
+          vmImage: 'ubuntu-latest'
+        environment: 'prod'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: ${{ parameters.artifactName }}
+
+                - script: |
+                    echo "HOTFIX DEPLOYMENT"
+                    echo "Artifact: ${{ parameters.artifactName }}"
+                    echo "Ticket: ${{ parameters.hotfixTicket }}"
+                  displayName: 'Execute hotfix deploy'
+
+                - ${{ if eq(parameters.skipComplianceCheck, false) }}:
+                  - script: |
+                      python $(Build.SourcesDirectory)/build-tools/scripts/generate_attestation.py \
+                        --artifact ${{ parameters.artifactName }} \
+                        --env prod \
+                        --build-id $(Build.BuildId) \
+                        --hotfix true
+                    displayName: 'Generate hotfix attestation'

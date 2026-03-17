@@ -1,0 +1,70 @@
+# notebook-executor pipeline
+# Stack: Python 3.10
+# Template source: NONE — fully inline
+# Owner: ?
+#
+# NON-BUILD WORKLOAD
+# This pipeline does not build software. It executes Jupyter notebooks
+# on CI infrastructure as a cheap compute environment.
+# Used by the quant team to run model validation notebooks overnight.
+
+trigger: none
+
+schedules:
+  - cron: '0 2 * * *'
+    displayName: 'Nightly notebook execution'
+    branches:
+      include:
+        - main
+    always: true
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  notebookDir: 'services/notebook-executor/notebooks'
+  outputDir: '$(Build.ArtifactStagingDirectory)/notebook-outputs'
+
+jobs:
+  - job: ExecuteNotebooks
+    displayName: 'Execute model validation notebooks'
+    timeoutInMinutes: 180
+    steps:
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.10'
+
+      - script: |
+          pip install jupyter nbconvert nbformat papermill \
+            numpy pandas scipy scikit-learn matplotlib seaborn
+        displayName: 'Install notebook dependencies'
+
+      - script: |
+          mkdir -p $(outputDir)
+          FAILED=0
+          for nb in $(find $(notebookDir) -name "*.ipynb" | sort); do
+            echo "========================================="
+            echo "Executing: $nb"
+            echo "========================================="
+            papermill "$nb" "$(outputDir)/$(basename $nb)" \
+              --cwd $(notebookDir) \
+              --no-progress-bar \
+              || FAILED=$((FAILED + 1))
+          done
+          echo "Completed with $FAILED failures"
+          if [ $FAILED -gt 0 ]; then
+            echo "##vso[task.logissue type=warning]$FAILED notebook(s) failed"
+          fi
+        displayName: 'Execute all notebooks'
+        timeoutInMinutes: 150
+
+      - script: |
+          jupyter nbconvert --to html $(outputDir)/*.ipynb || true
+        displayName: 'Convert outputs to HTML'
+
+      - task: PublishBuildArtifacts@1
+        displayName: 'Publish notebook outputs'
+        inputs:
+          pathToPublish: $(outputDir)
+          artifactName: 'notebook-outputs'
+        condition: always()

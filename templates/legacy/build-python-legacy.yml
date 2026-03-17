@@ -1,0 +1,44 @@
+# Legacy Python build template
+# WARNING: This template predates the central build-python.yml
+# Some teams still reference this. Do not delete without checking consumers.
+# Differences from central:
+#   - uses Python 3.9 by default
+#   - does not run linting
+#   - uses unittest instead of pytest
+#   - publishes to a different artifact name
+
+parameters:
+  - name: pythonVersion
+    type: string
+    default: '3.9'
+  - name: requirementsFile
+    type: string
+    default: 'requirements.txt'
+  - name: artifactName
+    type: string
+    default: 'python-package'
+
+steps:
+  - task: UsePythonVersion@0
+    displayName: 'Use Python ${{ parameters.pythonVersion }}'
+    inputs:
+      versionSpec: ${{ parameters.pythonVersion }}
+
+  - script: |
+      python -m pip install --upgrade pip
+      pip install -r ${{ parameters.requirementsFile }}
+    displayName: 'Install dependencies'
+
+  - script: |
+      python -m unittest discover -s tests -p "test_*.py" -v 2>&1 | tee test-output.txt
+    displayName: 'Run tests (unittest)'
+
+  - script: |
+      python setup.py sdist bdist_wheel
+    displayName: 'Build package'
+
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish artifacts'
+    inputs:
+      pathToPublish: 'dist/'
+      artifactName: ${{ parameters.artifactName }}

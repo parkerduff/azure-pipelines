@@ -1,0 +1,65 @@
+# Team override build template
+# Created by: team-reporting
+# Reason: Needed extra compliance metadata generation that central templates don't provide
+# This template wraps the central build and adds compliance steps
+
+parameters:
+  - name: language
+    type: string
+    values:
+      - python
+      - dotnet
+  - name: complianceLevel
+    type: string
+    default: 'standard'
+    values:
+      - standard
+      - elevated
+      - critical
+  - name: generateMetadata
+    type: boolean
+    default: true
+  - name: artifactName
+    type: string
+    default: 'compliant-build'
+
+steps:
+  - script: |
+      echo "Build initiated with compliance level: ${{ parameters.complianceLevel }}"
+      echo "Language: ${{ parameters.language }}"
+    displayName: 'Log compliance context'
+
+  - ${{ if eq(parameters.language, 'python') }}:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.11'
+    - script: |
+        pip install -r requirements.txt
+        pytest tests/ -v
+        python setup.py sdist bdist_wheel
+      displayName: 'Build and test (Python)'
+
+  - ${{ if eq(parameters.language, 'dotnet') }}:
+    - task: UseDotNet@2
+      inputs:
+        version: '8.0.x'
+    - script: |
+        dotnet restore
+        dotnet build --configuration Release
+        dotnet test
+      displayName: 'Build and test (.NET)'
+
+  - ${{ if eq(parameters.generateMetadata, true) }}:
+    - script: |
+        python $(Build.SourcesDirectory)/build-tools/compliance/generate_metadata.py \
+          --artifact ${{ parameters.artifactName }} \
+          --compliance-level ${{ parameters.complianceLevel }} \
+          --build-id $(Build.BuildId) \
+          --store compliance-store
+      displayName: 'Generate compliance metadata'
+
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish artifacts'
+    inputs:
+      pathToPublish: '$(Build.ArtifactStagingDirectory)'
+      artifactName: ${{ parameters.artifactName }}

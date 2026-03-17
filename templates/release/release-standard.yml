@@ -1,0 +1,64 @@
+# Central release pipeline template
+# Maintained by: shared-ci-platform team
+
+parameters:
+  - name: environment
+    type: string
+    values:
+      - dev
+      - staging
+      - prod
+  - name: artifactName
+    type: string
+  - name: deployStrategy
+    type: string
+    default: 'rolling'
+    values:
+      - rolling
+      - blue-green
+      - canary
+  - name: requireApproval
+    type: boolean
+    default: false
+  - name: notifyReleaseOrchestrator
+    type: boolean
+    default: true
+
+stages:
+  - stage: Deploy_${{ parameters.environment }}
+    displayName: 'Deploy to ${{ parameters.environment }}'
+    ${{ if eq(parameters.requireApproval, true) }}:
+      condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: deploy
+        displayName: 'Deploy ${{ parameters.artifactName }}'
+        pool:
+          vmImage: 'ubuntu-latest'
+        environment: ${{ parameters.environment }}
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: ${{ parameters.artifactName }}
+
+                - script: |
+                    echo "Deploying ${{ parameters.artifactName }} to ${{ parameters.environment }}"
+                    echo "Strategy: ${{ parameters.deployStrategy }}"
+                  displayName: 'Execute deployment'
+
+                - ${{ if eq(parameters.notifyReleaseOrchestrator, true) }}:
+                  - script: |
+                      python $(Build.SourcesDirectory)/build-tools/scripts/notify_release_orchestrator.py \
+                        --service ${{ parameters.artifactName }} \
+                        --env ${{ parameters.environment }} \
+                        --build-id $(Build.BuildId) \
+                        --status success
+                    displayName: 'Notify release-orchestrator'
+
+                - script: |
+                    python $(Build.SourcesDirectory)/build-tools/scripts/generate_attestation.py \
+                      --artifact ${{ parameters.artifactName }} \
+                      --env ${{ parameters.environment }} \
+                      --build-id $(Build.BuildId)
+                  displayName: 'Generate compliance attestation'

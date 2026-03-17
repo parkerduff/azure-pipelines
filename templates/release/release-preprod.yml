@@ -1,0 +1,36 @@
+# Pre-production release template
+# Used for staging deployments
+
+parameters:
+  - name: artifactName
+    type: string
+  - name: runSmokeTests
+    type: boolean
+    default: true
+
+stages:
+  - stage: DeployPreProd
+    displayName: 'Deploy to pre-production'
+    jobs:
+      - deployment: deploy_preprod
+        displayName: 'Deploy ${{ parameters.artifactName }} to preprod'
+        pool:
+          vmImage: 'ubuntu-latest'
+        environment: 'preprod'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: ${{ parameters.artifactName }}
+
+                - script: |
+                    echo "Deploying ${{ parameters.artifactName }} to preprod"
+                  displayName: 'Execute preprod deploy'
+
+                - ${{ if eq(parameters.runSmokeTests, true) }}:
+                  - script: |
+                      echo "Running smoke tests against preprod..."
+                      sleep 5
+                      echo "Smoke tests passed"
+                    displayName: 'Run smoke tests'

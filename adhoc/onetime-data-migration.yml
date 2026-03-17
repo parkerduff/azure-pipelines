@@ -1,0 +1,43 @@
+# One-time data migration pipeline
+# Created for a specific migration event — should have been deleted afterward
+# Status: probably unused but nobody wants to remove it
+
+trigger: none
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+parameters:
+  - name: sourceDb
+    type: string
+    default: 'legacy-positions-db'
+  - name: targetDb
+    type: string
+    default: 'positions-db-v2'
+  - name: dryRun
+    type: boolean
+    default: true
+
+jobs:
+  - job: MigrateData
+    displayName: 'One-time data migration'
+    timeoutInMinutes: 300
+    steps:
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.11'
+
+      - script: |
+          pip install pandas sqlalchemy pyodbc
+        displayName: 'Install dependencies'
+
+      - script: |
+          echo "Source: ${{ parameters.sourceDb }}"
+          echo "Target: ${{ parameters.targetDb }}"
+          echo "Dry run: ${{ parameters.dryRun }}"
+          python adhoc/scripts/migrate_data.py \
+            --source ${{ parameters.sourceDb }} \
+            --target ${{ parameters.targetDb }} \
+            ${{ if eq(parameters.dryRun, true) }}:
+              --dry-run
+        displayName: 'Execute migration'

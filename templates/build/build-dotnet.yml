@@ -1,0 +1,75 @@
+# Central .NET build template
+# Maintained by: shared-ci-platform team
+# Last reviewed: 2024-08
+
+parameters:
+  - name: solution
+    type: string
+    default: '**/*.sln'
+  - name: buildConfiguration
+    type: string
+    default: 'Release'
+  - name: dotnetVersion
+    type: string
+    default: '8.0.x'
+  - name: publishArtifacts
+    type: boolean
+    default: true
+  - name: runTests
+    type: boolean
+    default: true
+  - name: artifactName
+    type: string
+    default: 'drop'
+
+steps:
+  - task: UseDotNet@2
+    displayName: 'Install .NET SDK ${{ parameters.dotnetVersion }}'
+    inputs:
+      packageType: 'sdk'
+      version: ${{ parameters.dotnetVersion }}
+
+  - task: NuGetToolInstaller@1
+    displayName: 'Install NuGet'
+
+  - task: NuGetCommand@2
+    displayName: 'Restore NuGet packages'
+    inputs:
+      restoreSolution: ${{ parameters.solution }}
+
+  - task: DotNetCoreCLI@2
+    displayName: 'Build solution'
+    inputs:
+      command: 'build'
+      projects: ${{ parameters.solution }}
+      arguments: '--configuration ${{ parameters.buildConfiguration }} --no-restore'
+
+  - ${{ if eq(parameters.runTests, true) }}:
+    - task: DotNetCoreCLI@2
+      displayName: 'Run unit tests'
+      inputs:
+        command: 'test'
+        projects: '**/*Tests/*.csproj'
+        arguments: '--configuration ${{ parameters.buildConfiguration }} --collect:"XPlat Code Coverage"'
+
+  - ${{ if eq(parameters.publishArtifacts, true) }}:
+    - task: DotNetCoreCLI@2
+      displayName: 'Publish artifacts'
+      inputs:
+        command: 'publish'
+        publishWebProjects: true
+        arguments: '--configuration ${{ parameters.buildConfiguration }} --output $(Build.ArtifactStagingDirectory)'
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Upload build artifacts'
+      inputs:
+        pathToPublish: '$(Build.ArtifactStagingDirectory)'
+        artifactName: ${{ parameters.artifactName }}
+
+    - script: |
+        python $(Build.SourcesDirectory)/build-tools/scripts/publish_artifact.py \
+          --name ${{ parameters.artifactName }} \
+          --registry artifact-registry \
+          --build-id $(Build.BuildId)
+      displayName: 'Register artifact in artifact-registry'
+      condition: succeeded()

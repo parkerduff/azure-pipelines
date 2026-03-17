@@ -1,0 +1,58 @@
+# Alternative frontend build template
+# Created by: team-frontend
+# Reason: Central node template didn't support SSR builds or custom webpack configs
+# NOTE: Diverged from templates/build/build-node.yml in Q2 2023
+
+parameters:
+  - name: nodeVersion
+    type: string
+    default: '18.x'
+  - name: framework
+    type: string
+    default: 'react'
+    values:
+      - react
+      - vue
+      - angular
+  - name: enableSSR
+    type: boolean
+    default: true
+  - name: artifactName
+    type: string
+    default: 'frontend-bundle'
+
+steps:
+  - task: NodeTool@0
+    displayName: 'Install Node.js ${{ parameters.nodeVersion }}'
+    inputs:
+      versionSpec: ${{ parameters.nodeVersion }}
+
+  - script: npm ci
+    displayName: 'Install dependencies'
+
+  - script: npm run lint
+    displayName: 'Lint check'
+
+  - script: npm run build:${{ parameters.framework }}
+    displayName: 'Build ${{ parameters.framework }} app'
+
+  - ${{ if eq(parameters.enableSSR, true) }}:
+    - script: npm run build:ssr
+      displayName: 'Build SSR bundle'
+
+  - script: npm test -- --ci --coverage
+    displayName: 'Run tests'
+
+  - task: ArchiveFiles@2
+    displayName: 'Archive frontend bundle'
+    inputs:
+      rootFolderOrFile: 'build/'
+      includeRootFolder: false
+      archiveType: 'zip'
+      archiveFile: '$(Build.ArtifactStagingDirectory)/${{ parameters.artifactName }}.zip'
+
+  - task: PublishBuildArtifacts@1
+    displayName: 'Upload frontend bundle'
+    inputs:
+      pathToPublish: '$(Build.ArtifactStagingDirectory)'
+      artifactName: ${{ parameters.artifactName }}

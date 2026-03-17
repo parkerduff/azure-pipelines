@@ -1,0 +1,60 @@
+# Nightly VaR scenario sweep
+# NON-BUILD WORKLOAD
+# Runs value-at-risk scenario calculations using CI compute
+# This is NOT a software build — it's a compute job running on pipeline agents
+
+trigger: none
+
+schedules:
+  - cron: '0 1 * * 1-5'
+    displayName: 'Weeknight VaR sweep'
+    branches:
+      include:
+        - main
+    always: true
+
+pool:
+  name: 'high-memory-pool'
+  demands:
+    - Agent.OS -equals Linux
+
+variables:
+  scenarioDate: $[format('{0:yyyy-MM-dd}', pipeline.startTime)]
+
+jobs:
+  - job: VaRSweep
+    displayName: 'VaR scenario sweep'
+    timeoutInMinutes: 240
+    steps:
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.11'
+
+      - script: |
+          pip install numpy pandas scipy pyarrow requests
+        displayName: 'Install compute dependencies'
+
+      - script: |
+          echo "Starting VaR scenario sweep for $(scenarioDate)"
+          python night-jobs/compute/scripts/var_sweep.py \
+            --date $(scenarioDate) \
+            --scenarios 50000 \
+            --confidence-levels 0.95 0.99 0.999 \
+            --output /tmp/var-results/
+        displayName: 'Execute VaR calculations'
+        timeoutInMinutes: 200
+
+      - script: |
+          echo "Uploading results to data warehouse..."
+          python night-jobs/compute/scripts/upload_results.py \
+            --input /tmp/var-results/ \
+            --destination data-warehouse \
+            --date $(scenarioDate)
+        displayName: 'Upload results'
+
+      - task: PublishBuildArtifacts@1
+        displayName: 'Archive results'
+        inputs:
+          pathToPublish: '/tmp/var-results/'
+          artifactName: 'var-results-$(scenarioDate)'
+        condition: always()

@@ -1,0 +1,26 @@
+# risk-batch LEGACY pipeline
+# This was the original pipeline before migration to central templates.
+# Still triggered by some downstream jobs. Do not remove yet.
+# Uses legacy template branch.
+
+trigger: none
+
+pool:
+  vmImage: 'ubuntu-20.04'
+
+resources:
+  repositories:
+    - repository: templates
+      type: git
+      name: shared-ci-platform
+      ref: legacy/master-support
+
+stages:
+  - stage: Build
+    jobs:
+      - job: legacy_build
+        steps:
+          - template: templates/legacy/build-python-legacy.yml@templates
+            parameters:
+              pythonVersion: '3.9'
+              artifactName: 'risk-batch-legacy'

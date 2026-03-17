@@ -1,0 +1,53 @@
+# risk-batch CI pipeline
+# Stack: Python 3.11
+# Template source: central (staging/preprod branch)
+# Owner: team-quant
+# NOTE: This pipeline uses the staging/preprod template branch because
+#       team-quant added retry logic to the python build template there.
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - services/risk-batch/**
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  artifactName: 'risk-batch-dist'
+  templates_branch: 'staging/preprod'
+
+resources:
+  repositories:
+    - repository: templates
+      type: git
+      name: shared-ci-platform
+      ref: staging/preprod
+
+stages:
+  - stage: Build
+    displayName: 'Build risk-batch'
+    jobs:
+      - job: build
+        steps:
+          - template: templates/build/build-python.yml@templates
+            parameters:
+              pythonVersion: '3.11'
+              requirementsFile: 'services/risk-batch/requirements.txt'
+              artifactName: $(artifactName)
+
+          - template: templates/test/run-tests.yml@templates
+            parameters:
+              testFramework: 'pytest'
+
+  - stage: Release
+    displayName: 'Deploy to dev'
+    dependsOn: Build
+    jobs:
+      - template: templates/release/release-standard.yml@templates
+        parameters:
+          environment: 'dev'
+          artifactName: $(artifactName)

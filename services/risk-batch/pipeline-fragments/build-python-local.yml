@@ -1,0 +1,48 @@
+# Local template fork — risk-batch
+# This is a service-local copy of the python build template with
+# custom retry logic and extended timeout for batch workloads.
+# Created because central template changes kept breaking this service.
+
+parameters:
+  - name: pythonVersion
+    type: string
+    default: '3.11'
+  - name: timeoutMinutes
+    type: number
+    default: 60
+  - name: retryCount
+    type: number
+    default: 3
+
+steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: ${{ parameters.pythonVersion }}
+
+  - script: |
+      python -m pip install --upgrade pip
+      pip install -r requirements.txt
+    displayName: 'Install dependencies'
+
+  - script: |
+      RETRY=0
+      until python -m pytest tests/ -v --timeout=300; do
+        RETRY=$((RETRY + 1))
+        if [ $RETRY -ge ${{ parameters.retryCount }} ]; then
+          echo "Tests failed after ${{ parameters.retryCount }} retries"
+          exit 1
+        fi
+        echo "Test retry $RETRY..."
+        sleep 10
+      done
+    displayName: 'Run tests with retry'
+    timeoutInMinutes: ${{ parameters.timeoutMinutes }}
+
+  - script: |
+      python setup.py sdist bdist_wheel
+    displayName: 'Build distribution'
+
+  - task: PublishBuildArtifacts@1
+    inputs:
+      pathToPublish: 'dist/'
+      artifactName: 'risk-batch-local-build'

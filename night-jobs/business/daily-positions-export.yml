@@ -1,0 +1,63 @@
+# Daily positions export
+# NON-BUILD WORKLOAD
+# Exports current positions data for downstream reporting systems
+# Runs every business day at 7 PM ET
+
+trigger: none
+
+schedules:
+  - cron: '0 23 * * 1-5'
+    displayName: 'Daily positions export (7 PM ET)'
+    branches:
+      include:
+        - main
+    always: true
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  exportDate: $[format('{0:yyyy-MM-dd}', pipeline.startTime)]
+
+jobs:
+  - job: ExportPositions
+    displayName: 'Export daily positions'
+    timeoutInMinutes: 120
+    steps:
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.11'
+
+      - script: |
+          pip install pandas pyodbc sqlalchemy openpyxl requests
+        displayName: 'Install dependencies'
+
+      - script: |
+          echo "Exporting positions for $(exportDate)..."
+          python night-jobs/business/scripts/export_positions.py \
+            --date $(exportDate) \
+            --format parquet \
+            --output $(Build.ArtifactStagingDirectory)/positions/
+        displayName: 'Extract positions data'
+        timeoutInMinutes: 60
+
+      - script: |
+          echo "Generating position summary..."
+          python night-jobs/business/scripts/summarize_positions.py \
+            --input $(Build.ArtifactStagingDirectory)/positions/ \
+            --output $(Build.ArtifactStagingDirectory)/summary.xlsx
+        displayName: 'Generate summary report'
+
+      - script: |
+          echo "Distributing reports to downstream systems..."
+          python night-jobs/business/scripts/distribute_report.py \
+            --file $(Build.ArtifactStagingDirectory)/summary.xlsx \
+            --recipients team-reporting,team-quant
+        displayName: 'Distribute reports'
+
+      - task: PublishBuildArtifacts@1
+        displayName: 'Archive export'
+        inputs:
+          pathToPublish: '$(Build.ArtifactStagingDirectory)'
+          artifactName: 'positions-export-$(exportDate)'
+        condition: always()

@@ -1,0 +1,36 @@
+# Common setup steps used across multiple templates
+# Handles workspace preparation, tool installation, and environment configuration
+
+parameters:
+  - name: cleanWorkspace
+    type: boolean
+    default: true
+  - name: checkoutSubmodules
+    type: boolean
+    default: false
+  - name: installBuildTools
+    type: boolean
+    default: true
+
+steps:
+  - ${{ if eq(parameters.cleanWorkspace, true) }}:
+    - checkout: self
+      clean: true
+
+  - ${{ if eq(parameters.checkoutSubmodules, true) }}:
+    - checkout: self
+      submodules: recursive
+
+  - script: |
+      echo "Build Agent: $(Agent.MachineName)"
+      echo "Agent OS: $(Agent.OS)"
+      echo "Source Branch: $(Build.SourceBranch)"
+      echo "Build Reason: $(Build.Reason)"
+      echo "Build ID: $(Build.BuildId)"
+    displayName: 'Print build context'
+
+  - ${{ if eq(parameters.installBuildTools, true) }}:
+    - script: |
+        echo "Installing shared build tools..."
+        pip install pyyaml requests || true
+      displayName: 'Install shared build tools'

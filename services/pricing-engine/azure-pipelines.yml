@@ -1,0 +1,60 @@
+# pricing-engine CI pipeline
+# Stack: .NET 8
+# Template source: central (main)
+# Owner: unknown
+
+trigger:
+  branches:
+    include:
+      - main
+      - release/*
+  paths:
+    include:
+      - services/pricing-engine/**
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  buildConfiguration: 'Release'
+  artifactName: 'pricing-engine-drop'
+
+resources:
+  repositories:
+    - repository: templates
+      type: git
+      name: shared-ci-platform
+      ref: main
+
+stages:
+  - stage: Build
+    displayName: 'Build pricing-engine'
+    jobs:
+      - job: build
+        steps:
+          - template: templates/build/build-dotnet.yml@templates
+            parameters:
+              solution: 'services/pricing-engine/**/*.sln'
+              buildConfiguration: $(buildConfiguration)
+              dotnetVersion: '8.0.x'
+              artifactName: $(artifactName)
+
+  - stage: Test
+    displayName: 'Run tests'
+    dependsOn: Build
+    jobs:
+      - job: test
+        steps:
+          - template: templates/test/run-tests.yml@templates
+            parameters:
+              testFramework: 'generic'
+
+  - stage: Deploy_Dev
+    displayName: 'Deploy to dev'
+    dependsOn: Test
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - template: templates/release/release-standard.yml@templates
+        parameters:
+          environment: 'dev'
+          artifactName: $(artifactName)

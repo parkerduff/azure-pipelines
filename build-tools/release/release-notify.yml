@@ -1,0 +1,20 @@
+# Release notification helper
+# Sends notifications to release-orchestrator and team channels
+
+parameters:
+  - name: serviceName
+    type: string
+  - name: environment
+    type: string
+  - name: status
+    type: string
+    default: 'success'
+
+steps:
+  - script: |
+      python $(Build.SourcesDirectory)/build-tools/scripts/notify_release_orchestrator.py \
+        --service ${{ parameters.serviceName }} \
+        --env ${{ parameters.environment }} \
+        --build-id $(Build.BuildId) \
+        --status ${{ parameters.status }}
+    displayName: 'Notify release-orchestrator: ${{ parameters.serviceName }} → ${{ parameters.environment }}'
