@@ -1,6 +1,6 @@
 # Central .NET build template
 # Maintained by: shared-ci-platform team
-# Last reviewed: 2024-08
+# Last reviewed: 2023-09
 
 parameters:
   - name: solution
@@ -11,7 +11,7 @@ parameters:
     default: 'Release'
   - name: dotnetVersion
     type: string
-    default: '8.0.x'
+    default: '6.0.x'
   - name: publishArtifacts
     type: boolean
     default: true
