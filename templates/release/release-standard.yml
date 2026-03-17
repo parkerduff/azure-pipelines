@@ -1,5 +1,6 @@
 # Central release pipeline template
 # Maintained by: shared-ci-platform team
+# Modified on staging/release-hardening: added pre-deploy validation and mandatory approvals
 
 parameters:
   - name: environment
@@ -19,10 +20,16 @@ parameters:
       - canary
   - name: requireApproval
     type: boolean
-    default: false
+    default: true
   - name: notifyReleaseOrchestrator
     type: boolean
     default: true
+  - name: runPreDeployValidation
+    type: boolean
+    default: true
+  - name: healthCheckRetries
+    type: number
+    default: 5
 
 stages:
   - stage: Deploy_${{ parameters.environment }}
@@ -42,10 +49,32 @@ stages:
                 - download: current
                   artifact: ${{ parameters.artifactName }}
 
+                - ${{ if eq(parameters.runPreDeployValidation, true) }}:
+                  - script: |
+                      echo "Running pre-deploy validation..."
+                      python $(Build.SourcesDirectory)/build-tools/scripts/compare_build_outputs.py \
+                        --artifact ${{ parameters.artifactName }} \
+                        --baseline $(Build.SourcesDirectory)/validation/baselines/
+                    displayName: 'Pre-deploy artifact validation'
+
                 - script: |
                     echo "Deploying ${{ parameters.artifactName }} to ${{ parameters.environment }}"
                     echo "Strategy: ${{ parameters.deployStrategy }}"
                   displayName: 'Execute deployment'
+
+                - script: |
+                    RETRY=0
+                    MAX_RETRY=${{ parameters.healthCheckRetries }}
+                    until curl -sf http://localhost:8080/health; do
+                      RETRY=$((RETRY + 1))
+                      if [ $RETRY -ge $MAX_RETRY ]; then
+                        echo "Health check failed after $MAX_RETRY attempts"
+                        exit 1
+                      fi
+                      echo "Health check retry $RETRY/$MAX_RETRY..."
+                      sleep 15
+                    done
+                  displayName: 'Post-deploy health check (hardened)'
 
                 - ${{ if eq(parameters.notifyReleaseOrchestrator, true) }}:
                   - script: |
