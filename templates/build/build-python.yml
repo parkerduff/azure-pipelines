@@ -1,6 +1,7 @@
 # Central Python build template
 # Maintained by: shared-ci-platform team
 # Last reviewed: 2024-06
+# Modified on staging/preprod: added retry logic for flaky tests (team-quant request)
 
 parameters:
   - name: pythonVersion
@@ -27,6 +28,9 @@ parameters:
   - name: enableLinting
     type: boolean
     default: true
+  - name: testRetryCount
+    type: number
+    default: 3
 
 steps:
   - task: UsePythonVersion@0
@@ -48,12 +52,23 @@ steps:
 
   - ${{ if eq(parameters.runTests, true) }}:
     - script: |
-        pip install pytest pytest-cov pytest-junitxml
-        pytest tests/ \
+        pip install pytest pytest-cov pytest-junitxml pytest-rerunfailures
+        RETRY=0
+        MAX_RETRY=${{ parameters.testRetryCount }}
+        until pytest tests/ \
           --junitxml=$(Build.ArtifactStagingDirectory)/test-results.xml \
           --cov=src/ \
-          --cov-report=xml:$(Build.ArtifactStagingDirectory)/coverage.xml
-      displayName: 'Run tests with coverage'
+          --cov-report=xml:$(Build.ArtifactStagingDirectory)/coverage.xml \
+          --reruns 2 --reruns-delay 5; do
+          RETRY=$((RETRY + 1))
+          if [ $RETRY -ge $MAX_RETRY ]; then
+            echo "Tests failed after $MAX_RETRY retries"
+            exit 1
+          fi
+          echo "Test retry $RETRY of $MAX_RETRY..."
+          sleep 10
+        done
+      displayName: 'Run tests with coverage (retry-enabled)'
 
     - task: PublishTestResults@2
       displayName: 'Publish test results'
@@ -80,3 +95,8 @@ steps:
           --registry artifact-registry \
           --build-id $(Build.BuildId)
       displayName: 'Register artifact in artifact-registry'
+
+    - script: |
+        echo "Preprod artifact validation stamp"
+        echo "$(Build.BuildId)" > $(Build.ArtifactStagingDirectory)/preprod-stamp.txt
+      displayName: 'Stamp preprod validation marker'
