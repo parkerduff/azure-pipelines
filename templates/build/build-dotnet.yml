@@ -1,6 +1,4 @@
-# Central .NET build template
-# Maintained by: shared-ci-platform team
-# Last reviewed: 2024-08
+# Central .NET build template — maintained by shared-ci-platform team
 
 parameters:
   - name: solution
@@ -15,6 +13,9 @@ parameters:
   - name: publishArtifacts
     type: boolean
     default: true
+  - name: testProject
+    type: string
+    default: '**/*Tests/*.csproj'
   - name: runTests
     type: boolean
     default: true
@@ -49,7 +50,7 @@ steps:
       displayName: 'Run unit tests'
       inputs:
         command: 'test'
-        projects: '**/*Tests/*.csproj'
+        projects: ${{ parameters.testProject }}
         arguments: '--configuration ${{ parameters.buildConfiguration }} --collect:"XPlat Code Coverage"'
 
   - ${{ if eq(parameters.publishArtifacts, true) }}:
@@ -69,7 +70,7 @@ steps:
     - script: |
         python $(Build.SourcesDirectory)/build-tools/scripts/publish_artifact.py \
           --name ${{ parameters.artifactName }} \
-          --registry artifact-registry \
+          --registry Artifactory \
           --build-id $(Build.BuildId)
-      displayName: 'Register artifact in artifact-registry'
+      displayName: 'Register artifact in Artifactory'
       condition: succeeded()

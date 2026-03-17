@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Publish build artifacts to artifact-registry.
+Publish build artifacts to Artifactory.
 
 Used by CI templates to register build outputs in the central
 artifact tracking system. Called at the end of build pipelines.
@@ -32,7 +32,7 @@ def publish_artifact(name: str, registry: str, build_id: str, metadata: dict = N
     print(f"  Branch: {payload['source_branch']}")
     print(f"  Commit: {payload['source_commit']}")
 
-    # In a real environment, this would POST to the artifact-registry API
+    # In a real environment, this would POST to the Artifactory API
     output_path = os.environ.get("BUILD_ARTIFACTSTAGINGDIRECTORY", "/tmp")
     manifest_path = os.path.join(output_path, f"{name}-manifest.json")
 

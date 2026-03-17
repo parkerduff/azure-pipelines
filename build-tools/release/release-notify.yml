@@ -1,5 +1,5 @@
 # Release notification helper
-# Sends notifications to release-orchestrator and team channels
+# Sends notifications to D2 and team channels
 
 parameters:
   - name: serviceName
@@ -17,4 +17,4 @@ steps:
         --env ${{ parameters.environment }} \
         --build-id $(Build.BuildId) \
         --status ${{ parameters.status }}
-    displayName: 'Notify release-orchestrator: ${{ parameters.serviceName }} → ${{ parameters.environment }}'
+    displayName: 'Notify D2: ${{ parameters.serviceName }} → ${{ parameters.environment }}'

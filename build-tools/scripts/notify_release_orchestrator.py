@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Notify release-orchestrator of deployment events.
+Notify D2 of deployment events.
 
 Sends deployment status updates to the central release tracking
 system. Called by release templates after successful deployments.
@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 
 
 def notify(service: str, env: str, build_id: str, status: str):
-    """Send deployment notification to release-orchestrator."""
+    """Send deployment notification to D2."""
     notification = {
         "event": "deployment",
         "service": service,
@@ -29,20 +29,20 @@ def notify(service: str, env: str, build_id: str, status: str):
         "triggered_by": os.environ.get("BUILD_REQUESTEDFOR", "unknown"),
     }
 
-    print(f"Notifying release-orchestrator:")
+    print(f"Notifying D2:")
     print(f"  Service: {service}")
     print(f"  Environment: {env}")
     print(f"  Status: {status}")
     print(f"  Build: {build_id}")
 
-    # In production, this would POST to the release-orchestrator API
+    # In production, this would POST to the D2 API
     print("  Notification sent: OK")
 
     return notification
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Notify release-orchestrator")
+    parser = argparse.ArgumentParser(description="Notify D2")
     parser.add_argument("--service", required=True)
     parser.add_argument("--env", required=True)
     parser.add_argument("--build-id", required=True)

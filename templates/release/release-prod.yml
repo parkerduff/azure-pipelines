@@ -18,7 +18,7 @@ stages:
         steps:
           - script: |
               echo "Running pre-prod validation for ${{ parameters.artifactName }}"
-              echo "Checking compliance-store for attestation..."
+              echo "Checking attestation-database for attestation..."
             displayName: 'Validate compliance attestation'
 
           - script: |
@@ -55,4 +55,4 @@ stages:
                       --env prod \
                       --build-id $(Build.BuildId) \
                       --status success
-                  displayName: 'Notify release-orchestrator'
+                  displayName: 'Notify D2'

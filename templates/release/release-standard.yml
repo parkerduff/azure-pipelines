@@ -54,7 +54,7 @@ stages:
                         --env ${{ parameters.environment }} \
                         --build-id $(Build.BuildId) \
                         --status success
-                    displayName: 'Notify release-orchestrator'
+                    displayName: 'Notify D2'
 
                 - script: |
                     python $(Build.SourcesDirectory)/build-tools/scripts/generate_attestation.py \

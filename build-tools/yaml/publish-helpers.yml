@@ -25,9 +25,9 @@ steps:
     - script: |
         python $(Build.SourcesDirectory)/build-tools/scripts/publish_artifact.py \
           --name ${{ parameters.artifactName }} \
-          --registry artifact-registry \
+          --registry Artifactory \
           --build-id $(Build.BuildId)
-      displayName: 'Register in artifact-registry'
+      displayName: 'Register in Artifactory'
 
   - ${{ if eq(parameters.generateAttestation, true) }}:
     - script: |

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate compliance metadata and upload to compliance-store.
+Generate compliance metadata and upload to attestation-database.
 
 This script creates structured metadata about build and deployment
 events for regulatory compliance tracking.
@@ -48,7 +48,7 @@ def generate_metadata(artifact: str, compliance_level: str, build_id: str, store
     print(f"  Store: {store}")
     print(f"  Output: {metadata_path}")
 
-    # In production, this would POST to compliance-store API
+    # In production, this would POST to attestation-database API
     print(f"  Uploaded to {store}: OK")
 
     return metadata

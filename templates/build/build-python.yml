@@ -1,6 +1,4 @@
-# Central Python build template
-# Maintained by: shared-ci-platform team
-# Last reviewed: 2024-06
+# Central Python build template — maintained by shared-ci-platform team
 
 parameters:
   - name: pythonVersion
@@ -12,12 +10,9 @@ parameters:
   - name: runTests
     type: boolean
     default: true
-  - name: testFramework
+  - name: testCommand
     type: string
     default: 'pytest'
-    values:
-      - pytest
-      - unittest
   - name: publishArtifacts
     type: boolean
     default: true
@@ -77,6 +72,6 @@ steps:
     - script: |
         python $(Build.SourcesDirectory)/build-tools/scripts/publish_artifact.py \
           --name ${{ parameters.artifactName }} \
-          --registry artifact-registry \
+          --registry Artifactory \
           --build-id $(Build.BuildId)
-      displayName: 'Register artifact in artifact-registry'
+      displayName: 'Register artifact in Artifactory'

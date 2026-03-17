@@ -76,6 +76,6 @@ See [docs/branch-usage-notes.md](docs/branch-usage-notes.md) for details.
 
 ## Integration Points
 
-- **artifact-registry** — central artifact tracking system
-- **release-orchestrator** — deployment tracking and coordination
-- **compliance-store** — regulatory compliance metadata and attestations
+- **Artifactory** — central artifact tracking system
+- **D2** — deployment tracking and coordination
+- **attestation-database** — regulatory compliance metadata and attestations
