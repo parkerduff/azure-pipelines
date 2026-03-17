@@ -1,11 +1,12 @@
 # Central Python build template
 # Maintained by: shared-ci-platform team
-# Last reviewed: 2024-06
+# Last reviewed: 2022-12
+# FROZEN: This branch is for legacy compatibility only. Do not modify.
 
 parameters:
   - name: pythonVersion
     type: string
-    default: '3.11'
+    default: '3.8'
   - name: requirementsFile
     type: string
     default: 'requirements.txt'
@@ -23,10 +24,10 @@ parameters:
     default: true
   - name: artifactName
     type: string
-    default: 'python-dist'
+    default: 'python-legacy-dist'
   - name: enableLinting
     type: boolean
-    default: true
+    default: false
 
 steps:
   - task: UsePythonVersion@0
