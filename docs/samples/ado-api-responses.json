@@ -1,0 +1,1666 @@
+{
+  "_comment": "Sample ADO REST API responses for the shared-ci-platform project. These represent what you would get by querying Azure DevOps APIs directly. This data supplements the YAML files in the repo with pipeline-level metadata that only ADO knows: pipeline IDs, enabled/disabled state, run history, variable groups, service connections, environments, and agent pools.",
+  "_org": "contoso-financial",
+  "_project": "shared-ci-platform",
+  "_generated": "2026-03-17T23:00:00Z",
+
+  "build_definitions": {
+    "_endpoint": "GET https://dev.azure.com/contoso-financial/shared-ci-platform/_apis/build/definitions?api-version=7.1",
+    "_description": "All pipeline definitions in the project. Each entry is a pipeline registered in ADO, including its YAML path, repo reference, queue/pool, triggers, variable groups, and enabled state.",
+    "count": 18,
+    "value": [
+      {
+        "id": 101,
+        "name": "pricing-engine-ci",
+        "path": "\\Services\\pricing-engine",
+        "type": "build",
+        "queueStatus": "enabled",
+        "revision": 14,
+        "createdDate": "2022-03-15T09:30:00Z",
+        "project": {
+          "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+          "name": "shared-ci-platform"
+        },
+        "process": {
+          "yamlFilename": "services/pricing-engine/azure-pipelines.yml",
+          "type": 2
+        },
+        "repository": {
+          "id": "shared-ci-platform",
+          "type": "TfsGit",
+          "name": "shared-ci-platform",
+          "defaultBranch": "refs/heads/main"
+        },
+        "queue": {
+          "id": 9,
+          "name": "Azure Pipelines",
+          "pool": {
+            "id": 9,
+            "name": "Azure Pipelines",
+            "isHosted": true
+          }
+        },
+        "triggers": [
+          {
+            "triggerType": "continuousIntegration",
+            "branchFilters": ["+refs/heads/main", "+refs/heads/release/*"],
+            "pathFilters": ["+services/pricing-engine/**"],
+            "settingsSourceType": 2
+          }
+        ],
+        "variableGroups": [
+          { "id": 201, "name": "shared-ci-secrets" },
+          { "id": 205, "name": "artifact-registry-credentials" }
+        ],
+        "variables": {
+          "buildConfiguration": { "value": "Release" },
+          "artifactName": { "value": "pricing-engine-drop" }
+        },
+        "retentionRules": [
+          { "branches": ["+refs/heads/*"], "daysToKeep": 30, "minimumToKeep": 5 }
+        ],
+        "latestBuild": {
+          "id": 98234,
+          "buildNumber": "20260314.3",
+          "status": "completed",
+          "result": "succeeded",
+          "startTime": "2026-03-14T14:22:10Z",
+          "finishTime": "2026-03-14T14:29:45Z",
+          "sourceBranch": "refs/heads/main",
+          "sourceVersion": "a3f8c91d2e4b567890abcdef12345678deadbeef"
+        },
+        "_meta": {
+          "owner_team": "unknown",
+          "last_modified_by": "contractor-account@contoso.com",
+          "classification": "central-template-consumer",
+          "notes": "Original team disbanded. shared-ci-platform maintains as best-effort."
+        }
+      },
+      {
+        "id": 102,
+        "name": "portfolio-api-ci",
+        "path": "\\Services\\portfolio-api",
+        "type": "build",
+        "queueStatus": "enabled",
+        "revision": 22,
+        "createdDate": "2021-11-08T11:15:00Z",
+        "project": {
+          "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+          "name": "shared-ci-platform"
+        },
+        "process": {
+          "yamlFilename": "services/portfolio-api/azure-pipelines.yml",
+          "type": 2
+        },
+        "repository": {
+          "id": "shared-ci-platform",
+          "type": "TfsGit",
+          "name": "shared-ci-platform",
+          "defaultBranch": "refs/heads/main"
+        },
+        "queue": {
+          "id": 9,
+          "name": "Azure Pipelines",
+          "pool": {
+            "id": 9,
+            "name": "Azure Pipelines",
+            "isHosted": true
+          }
+        },
+        "triggers": [
+          {
+            "triggerType": "continuousIntegration",
+            "branchFilters": ["+refs/heads/main", "+refs/heads/master"],
+            "pathFilters": ["+services/portfolio-api/**"],
+            "settingsSourceType": 2
+          }
+        ],
+        "variableGroups": [
+          { "id": 201, "name": "shared-ci-secrets" },
+          { "id": 205, "name": "artifact-registry-credentials" }
+        ],
+        "variables": {
+          "artifactName": { "value": "portfolio-api-dist" }
+        },
+        "retentionRules": [
+          { "branches": ["+refs/heads/*"], "daysToKeep": 30, "minimumToKeep": 5 }
+        ],
+        "latestBuild": {
+          "id": 97891,
+          "buildNumber": "20260312.1",
+          "status": "completed",
+          "result": "succeeded",
+          "startTime": "2026-03-12T10:05:22Z",
+          "finishTime": "2026-03-12T10:14:58Z",
+          "sourceBranch": "refs/heads/main",
+          "sourceVersion": "b4c9d02e3f5a678901bcdef234567890aabbccdd"
+        },
+        "_meta": {
+          "owner_team": "team-quant",
+          "last_modified_by": "j.chen@contoso.com",
+          "classification": "central-template-consumer",
+          "notes": "Still references master branch for templates. Should migrate to main."
+        }
+      },
+      {
+        "id": 103,
+        "name": "portfolio-api-canary",
+        "path": "\\Services\\portfolio-api",
+        "type": "build",
+        "queueStatus": "enabled",
+        "revision": 8,
+        "createdDate": "2024-06-20T14:00:00Z",
+        "project": {
+          "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+          "name": "shared-ci-platform"
+        },
+        "process": {
+          "yamlFilename": "services/portfolio-api/azure-pipelines-canary.yml",
+          "type": 2
+        },
+        "repository": {
+          "id": "shared-ci-platform",
+          "type": "TfsGit",
+          "name": "shared-ci-platform",
+          "defaultBranch": "refs/heads/main"
+        },
+        "queue": {
+          "id": 9,
+          "name": "Azure Pipelines",
+          "pool": {
+            "id": 9,
+            "name": "Azure Pipelines",
+            "isHosted": true
+          }
+        },
+        "triggers": [],
+        "variableGroups": [
+          { "id": 201, "name": "shared-ci-secrets" }
+        ],
+        "variables": {
+          "artifactName": { "value": "portfolio-api-canary" }
+        },
+        "retentionRules": [
+          { "branches": ["+refs/heads/*"], "daysToKeep": 14, "minimumToKeep": 3 }
+        ],
+        "latestBuild": {
+          "id": 95102,
+          "buildNumber": "20260228.1",
+          "status": "completed",
+          "result": "succeeded",
+          "startTime": "2026-02-28T16:40:00Z",
+          "finishTime": "2026-02-28T16:48:33Z",
+          "sourceBranch": "refs/heads/main",
+          "sourceVersion": "c5d0e13f4a6b789012cdef3456789012bbccddee",
+          "parameters": "{\"templateBranch\": \"staging/preprod\"}"
+        },
+        "_meta": {
+          "owner_team": "team-quant",
+          "last_modified_by": "j.chen@contoso.com",
+          "classification": "central-template-consumer",
+          "notes": "Manual trigger only. Used to test template changes across branches before committing. References 4 different template branches via parameter."
+        }
+      },
+      {
+        "id": 104,
+        "name": "risk-batch-ci",
+        "path": "\\Services\\risk-batch",
+        "type": "build",
+        "queueStatus": "enabled",
+        "revision": 31,
+        "createdDate": "2021-08-02T08:45:00Z",
+        "project": {
+          "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+          "name": "shared-ci-platform"
+        },
+        "process": {
+          "yamlFilename": "services/risk-batch/azure-pipelines.yml",
+          "type": 2
+        },
+        "repository": {
+          "id": "shared-ci-platform",
+          "type": "TfsGit",
+          "name": "shared-ci-platform",
+          "defaultBranch": "refs/heads/main"
+        },
+        "queue": {
+          "id": 9,
+          "name": "Azure Pipelines",
+          "pool": {
+            "id": 9,
+            "name": "Azure Pipelines",
+            "isHosted": true
+          }
+        },
+        "triggers": [
+          {
+            "triggerType": "continuousIntegration",
+            "branchFilters": ["+refs/heads/main"],
+            "pathFilters": ["+services/risk-batch/**"],
+            "settingsSourceType": 2
+          }
+        ],
+        "variableGroups": [
+          { "id": 201, "name": "shared-ci-secrets" },
+          { "id": 205, "name": "artifact-registry-credentials" },
+          { "id": 208, "name": "risk-batch-config" }
+        ],
+        "variables": {
+          "artifactName": { "value": "risk-batch-dist" },
+          "templates_branch": { "value": "staging/preprod" }
+        },
+        "retentionRules": [
+          { "branches": ["+refs/heads/*"], "daysToKeep": 60, "minimumToKeep": 10 }
+        ],
+        "latestBuild": {
+          "id": 98301,
+          "buildNumber": "20260315.1",
+          "status": "completed",
+          "result": "succeeded",
+          "startTime": "2026-03-15T08:12:00Z",
+          "finishTime": "2026-03-15T08:25:44Z",
+          "sourceBranch": "refs/heads/main",
+          "sourceVersion": "d6e1f24a5b7c890123def45678901234ccddeeff"
+        },
+        "_meta": {
+          "owner_team": "team-quant",
+          "last_modified_by": "m.patel@contoso.com",
+          "classification": "central-template-consumer",
+          "notes": "Uses staging/preprod template branch for retry logic. Has a service-local template fork at pipeline-fragments/build-python-local.yml that is not currently referenced by this pipeline but exists as a fallback."
+        }
+      },
+      {
+        "id": 105,
+        "name": "risk-batch-legacy",
+        "path": "\\Services\\risk-batch",
+        "type": "build",
+        "queueStatus": "enabled",
+        "revision": 5,
+        "createdDate": "2020-06-10T10:00:00Z",
+        "project": {
+          "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+          "name": "shared-ci-platform"
+        },
+        "process": {
+          "yamlFilename": "services/risk-batch/azure-pipelines-legacy.yml",
+          "type": 2
+        },
+        "repository": {
+          "id": "shared-ci-platform",
+          "type": "TfsGit",
+          "name": "shared-ci-platform",
+          "defaultBranch": "refs/heads/main"
+        },
+        "queue": {
+          "id": 9,
+          "name": "Azure Pipelines",
+          "pool": {
+            "id": 9,
+            "name": "Azure Pipelines",
+            "isHosted": true
+          }
+        },
+        "triggers": [],
+        "variableGroups": [
+          { "id": 201, "name": "shared-ci-secrets" }
+        ],
+        "variables": {},
+        "retentionRules": [
+          { "branches": ["+refs/heads/*"], "daysToKeep": 90, "minimumToKeep": 3 }
+        ],
+        "latestBuild": {
+          "id": 91205,
+          "buildNumber": "20260110.1",
+          "status": "completed",
+          "result": "succeeded",
+          "startTime": "2026-01-10T03:00:12Z",
+          "finishTime": "2026-01-10T03:08:55Z",
+          "sourceBranch": "refs/heads/main",
+          "sourceVersion": "e7f2a35b6c8d901234ef567890123456ddeeff00"
+        },
+        "_meta": {
+          "owner_team": "team-quant",
+          "last_modified_by": "contractor-account@contoso.com",
+          "classification": "central-template-consumer",
+          "notes": "Legacy pipeline, trigger disabled in YAML. Still triggered externally by downstream jobs. Uses legacy/master-support frozen branch. Last manually triggered Jan 2026."
+        }
+      },
+      {
+        "id": 106,
+        "name": "frontend-workbench-ci",
+        "path": "\\Services\\frontend-workbench",
+        "type": "build",
+        "queueStatus": "enabled",
+        "revision": 19,
+        "createdDate": "2023-04-12T13:20:00Z",
+        "project": {
+          "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+          "name": "shared-ci-platform"
+        },
+        "process": {
+          "yamlFilename": "services/frontend-workbench/azure-pipelines.yml",
+          "type": 2
+        },
+        "repository": {
+          "id": "shared-ci-platform",
+          "type": "TfsGit",
+          "name": "shared-ci-platform",
+          "defaultBranch": "refs/heads/main"
+        },
+        "queue": {
+          "id": 9,
+          "name": "Azure Pipelines",
+          "pool": {
+            "id": 9,
+            "name": "Azure Pipelines",
+            "isHosted": true
+          }
+        },
+        "triggers": [
+          {
+            "triggerType": "continuousIntegration",
+            "branchFilters": ["+refs/heads/main", "+refs/heads/feature/*"],
+            "pathFilters": ["+services/frontend-workbench/**"],
+            "settingsSourceType": 2
+          }
+        ],
+        "variableGroups": [
+          { "id": 201, "name": "shared-ci-secrets" },
+          { "id": 210, "name": "frontend-cdn-config" }
+        ],
+        "variables": {
+          "artifactName": { "value": "frontend-workbench-bundle" }
+        },
+        "retentionRules": [
+          { "branches": ["+refs/heads/*"], "daysToKeep": 30, "minimumToKeep": 5 }
+        ],
+        "latestBuild": {
+          "id": 98412,
+          "buildNumber": "20260316.2",
+          "status": "completed",
+          "result": "succeeded",
+          "startTime": "2026-03-16T11:30:00Z",
+          "finishTime": "2026-03-16T11:42:18Z",
+          "sourceBranch": "refs/heads/feature/dark-mode",
+          "sourceVersion": "f8a3b46c7d9e012345fa678901234567eeff0011"
+        },
+        "_meta": {
+          "owner_team": "team-frontend",
+          "last_modified_by": "s.wong@contoso.com",
+          "classification": "alt-template-consumer",
+          "notes": "Uses alt-templates/frontend/ from team/frontend-custom branch. team-frontend owns both the service and the templates."
+        }
+      },
+      {
+        "id": 107,
+        "name": "regulatory-reporting-ci",
+        "path": "\\Services\\regulatory-reporting",
+        "type": "build",
+        "queueStatus": "enabled",
+        "revision": 26,
+        "createdDate": "2022-01-20T09:00:00Z",
+        "project": {
+          "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+          "name": "shared-ci-platform"
+        },
+        "process": {
+          "yamlFilename": "services/regulatory-reporting/azure-pipelines.yml",
+          "type": 2
+        },
+        "repository": {
+          "id": "shared-ci-platform",
+          "type": "TfsGit",
+          "name": "shared-ci-platform",
+          "defaultBranch": "refs/heads/main"
+        },
+        "queue": {
+          "id": 9,
+          "name": "Azure Pipelines",
+          "pool": {
+            "id": 9,
+            "name": "Azure Pipelines",
+            "isHosted": true
+          }
+        },
+        "triggers": [
+          {
+            "triggerType": "continuousIntegration",
+            "branchFilters": ["+refs/heads/main"],
+            "pathFilters": ["+services/regulatory-reporting/**"],
+            "settingsSourceType": 2
+          },
+          {
+            "triggerType": "schedule",
+            "schedules": [
+              {
+                "branchFilters": ["+refs/heads/main"],
+                "daysToRun": ["monday", "tuesday", "wednesday", "thursday", "friday"],
+                "startHours": 6,
+                "startMinutes": 0,
+                "timeZoneId": "UTC",
+                "scheduleOnlyWithChanges": false
+              }
+            ]
+          }
+        ],
+        "variableGroups": [
+          { "id": 201, "name": "shared-ci-secrets" },
+          { "id": 206, "name": "compliance-store-credentials" },
+          { "id": 209, "name": "regulatory-reporting-config" }
+        ],
+        "variables": {
+          "complianceLevel": { "value": "elevated" }
+        },
+        "retentionRules": [
+          { "branches": ["+refs/heads/*"], "daysToKeep": 365, "minimumToKeep": 50 }
+        ],
+        "latestBuild": {
+          "id": 98450,
+          "buildNumber": "20260317.1",
+          "status": "completed",
+          "result": "succeeded",
+          "startTime": "2026-03-17T06:00:05Z",
+          "finishTime": "2026-03-17T07:22:31Z",
+          "sourceBranch": "refs/heads/main",
+          "sourceVersion": "09b4c57d8e0f123456ab789012345678ff001122",
+          "triggerInfo": { "scheduledTriggerId": "sched-107-weekday" }
+        },
+        "_meta": {
+          "owner_team": "team-reporting",
+          "last_modified_by": "l.garcia@contoso.com",
+          "classification": "hybrid",
+          "notes": "Hybrid: uses team-overrides template from team/reporting-hotfix branch + inline compliance steps. Looks like a build but is really a compliance workflow. Runs on schedule AND CI trigger. 365-day retention for audit purposes."
+        }
+      },
+      {
+        "id": 108,
+        "name": "market-sim-ci",
+        "path": "\\Services\\market-sim",
+        "type": "build",
+        "queueStatus": "enabled",
+        "revision": 11,
+        "createdDate": "2023-09-05T15:45:00Z",
+        "project": {
+          "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+          "name": "shared-ci-platform"
+        },
+        "process": {
+          "yamlFilename": "services/market-sim/azure-pipelines.yml",
+          "type": 2
+        },
+        "repository": {
+          "id": "shared-ci-platform",
+          "type": "TfsGit",
+          "name": "shared-ci-platform",
+          "defaultBranch": "refs/heads/main"
+        },
+        "queue": {
+          "id": 9,
+          "name": "Azure Pipelines",
+          "pool": {
+            "id": 9,
+            "name": "Azure Pipelines",
+            "isHosted": true
+          }
+        },
+        "triggers": [
+          {
+            "triggerType": "continuousIntegration",
+            "branchFilters": ["+refs/heads/main"],
+            "pathFilters": ["+services/market-sim/**"],
+            "settingsSourceType": 2
+          }
+        ],
+        "variableGroups": [],
+        "variables": {
+          "CARGO_TERM_COLOR": { "value": "always" },
+          "RUST_BACKTRACE": { "value": "1" }
+        },
+        "retentionRules": [
+          { "branches": ["+refs/heads/*"], "daysToKeep": 30, "minimumToKeep": 5 }
+        ],
+        "latestBuild": {
+          "id": 97450,
+          "buildNumber": "20260308.1",
+          "status": "completed",
+          "result": "succeeded",
+          "startTime": "2026-03-08T09:15:00Z",
+          "finishTime": "2026-03-08T09:38:22Z",
+          "sourceBranch": "refs/heads/main",
+          "sourceVersion": "1ab5c68d9e0f234567bc890123456789a0112233"
+        },
+        "_meta": {
+          "owner_team": "team-quant",
+          "last_modified_by": "r.nakamura@contoso.com",
+          "classification": "custom-inline",
+          "notes": "Fully inline Rust pipeline. No shared templates — team-quant built independently. Deploys outside release-orchestrator to a compute cluster."
+        }
+      },
+      {
+        "id": 109,
+        "name": "ops-control-plane-ci",
+        "path": "\\Services\\ops-control-plane",
+        "type": "build",
+        "queueStatus": "enabled",
+        "revision": 17,
+        "createdDate": "2022-07-18T10:30:00Z",
+        "project": {
+          "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+          "name": "shared-ci-platform"
+        },
+        "process": {
+          "yamlFilename": "services/ops-control-plane/azure-pipelines.yml",
+          "type": 2
+        },
+        "repository": {
+          "id": "shared-ci-platform",
+          "type": "TfsGit",
+          "name": "shared-ci-platform",
+          "defaultBranch": "refs/heads/main"
+        },
+        "queue": {
+          "id": 9,
+          "name": "Azure Pipelines",
+          "pool": {
+            "id": 9,
+            "name": "Azure Pipelines",
+            "isHosted": true
+          }
+        },
+        "triggers": [
+          {
+            "triggerType": "continuousIntegration",
+            "branchFilters": ["+refs/heads/main"],
+            "pathFilters": ["+services/ops-control-plane/**"],
+            "settingsSourceType": 2
+          }
+        ],
+        "variableGroups": [
+          { "id": 201, "name": "shared-ci-secrets" },
+          { "id": 211, "name": "ops-infra-credentials" }
+        ],
+        "variables": {
+          "GOPATH": { "value": "$(system.defaultWorkingDirectory)/go" },
+          "GOBIN": { "value": "$(GOPATH)/bin" },
+          "modulePath": { "value": "services/ops-control-plane" }
+        },
+        "retentionRules": [
+          { "branches": ["+refs/heads/*"], "daysToKeep": 30, "minimumToKeep": 5 }
+        ],
+        "latestBuild": {
+          "id": 98100,
+          "buildNumber": "20260313.2",
+          "status": "completed",
+          "result": "succeeded",
+          "startTime": "2026-03-13T16:05:00Z",
+          "finishTime": "2026-03-13T16:12:47Z",
+          "sourceBranch": "refs/heads/main",
+          "sourceVersion": "2bc6d79e0f1a345678cd901234567890b1223344"
+        },
+        "_meta": {
+          "owner_team": "platform-team",
+          "last_modified_by": "k.johnson@contoso.com",
+          "classification": "custom-inline",
+          "notes": "Custom inline Go pipeline. Central templates now have build-go.yml but this service predates it and was never migrated."
+        }
+      },
+      {
+        "id": 110,
+        "name": "notebook-executor-nightly",
+        "path": "\\Night Jobs\\notebook-executor",
+        "type": "build",
+        "queueStatus": "enabled",
+        "revision": 9,
+        "createdDate": "2023-02-14T16:00:00Z",
+        "project": {
+          "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+          "name": "shared-ci-platform"
+        },
+        "process": {
+          "yamlFilename": "services/notebook-executor/azure-pipelines.yml",
+          "type": 2
+        },
+        "repository": {
+          "id": "shared-ci-platform",
+          "type": "TfsGit",
+          "name": "shared-ci-platform",
+          "defaultBranch": "refs/heads/main"
+        },
+        "queue": {
+          "id": 15,
+          "name": "linux-build-workers",
+          "pool": {
+            "id": 15,
+            "name": "linux-build-workers",
+            "isHosted": false
+          }
+        },
+        "triggers": [
+          {
+            "triggerType": "schedule",
+            "schedules": [
+              {
+                "branchFilters": ["+refs/heads/main"],
+                "daysToRun": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
+                "startHours": 2,
+                "startMinutes": 0,
+                "timeZoneId": "UTC",
+                "scheduleOnlyWithChanges": false
+              }
+            ]
+          }
+        ],
+        "variableGroups": [
+          { "id": 207, "name": "internal-network-credentials" }
+        ],
+        "variables": {
+          "notebookDir": { "value": "services/notebook-executor/notebooks" },
+          "outputDir": { "value": "$(Build.ArtifactStagingDirectory)/notebook-outputs" }
+        },
+        "retentionRules": [
+          { "branches": ["+refs/heads/*"], "daysToKeep": 14, "minimumToKeep": 7 }
+        ],
+        "latestBuild": {
+          "id": 98440,
+          "buildNumber": "20260317.1",
+          "status": "completed",
+          "result": "partiallySucceeded",
+          "startTime": "2026-03-17T02:00:08Z",
+          "finishTime": "2026-03-17T04:45:22Z",
+          "sourceBranch": "refs/heads/main",
+          "sourceVersion": "3cd7e80f1a2b456789de012345678901c2334455"
+        },
+        "_meta": {
+          "owner_team": "unknown",
+          "last_modified_by": "unknown-service-account@contoso.com",
+          "classification": "non-build-workload",
+          "notes": "NON-BUILD. Executes Jupyter notebooks on self-hosted linux-build-workers as free compute. 3-hour timeout. Runs nightly. No owner identified. Requires internal network access. Cannot move to GHA hosted runners."
+        }
+      },
+      {
+        "id": 111,
+        "name": "scenario-runner-weekly",
+        "path": "\\Night Jobs\\scenario-runner",
+        "type": "build",
+        "queueStatus": "enabled",
+        "revision": 12,
+        "createdDate": "2023-05-22T11:00:00Z",
+        "project": {
+          "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+          "name": "shared-ci-platform"
+        },
+        "process": {
+          "yamlFilename": "services/scenario-runner/azure-pipelines.yml",
+          "type": 2
+        },
+        "repository": {
+          "id": "shared-ci-platform",
+          "type": "TfsGit",
+          "name": "shared-ci-platform",
+          "defaultBranch": "refs/heads/main"
+        },
+        "queue": {
+          "id": 18,
+          "name": "high-memory-pool",
+          "pool": {
+            "id": 18,
+            "name": "high-memory-pool",
+            "isHosted": false
+          }
+        },
+        "triggers": [
+          {
+            "triggerType": "schedule",
+            "schedules": [
+              {
+                "branchFilters": ["+refs/heads/main"],
+                "daysToRun": ["friday"],
+                "startHours": 22,
+                "startMinutes": 0,
+                "timeZoneId": "UTC",
+                "scheduleOnlyWithChanges": false
+              }
+            ]
+          }
+        ],
+        "variableGroups": [
+          { "id": 207, "name": "internal-network-credentials" }
+        ],
+        "variables": {},
+        "retentionRules": [
+          { "branches": ["+refs/heads/*"], "daysToKeep": 30, "minimumToKeep": 5 }
+        ],
+        "latestBuild": {
+          "id": 98200,
+          "buildNumber": "20260314.1",
+          "status": "completed",
+          "result": "succeeded",
+          "startTime": "2026-03-14T22:00:05Z",
+          "finishTime": "2026-03-15T01:48:10Z",
+          "sourceBranch": "refs/heads/main",
+          "sourceVersion": "4de8f91a2b3c567890ef123456789012d3445566",
+          "parameters": "{\"scenarioCount\": 10000, \"modelVersion\": \"v2.3\", \"outputFormat\": \"parquet\"}"
+        },
+        "_meta": {
+          "owner_team": "unknown",
+          "last_modified_by": "unknown-service-account@contoso.com",
+          "classification": "non-build-workload",
+          "notes": "NON-BUILD. Monte Carlo simulations on high-memory-pool self-hosted agents. 6-hour timeout. Also manually triggered with custom parameters. No owner. Cannot move to GHA hosted runners — needs high-memory compute + internal network."
+        }
+      },
+      {
+        "id": 112,
+        "name": "var-scenario-sweep-nightly",
+        "path": "\\Night Jobs\\Compute",
+        "type": "build",
+        "queueStatus": "enabled",
+        "revision": 7,
+        "createdDate": "2023-08-15T09:00:00Z",
+        "project": {
+          "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+          "name": "shared-ci-platform"
+        },
+        "process": {
+          "yamlFilename": "night-jobs/compute/var-scenario-sweep.yml",
+          "type": 2
+        },
+        "repository": {
+          "id": "shared-ci-platform",
+          "type": "TfsGit",
+          "name": "shared-ci-platform",
+          "defaultBranch": "refs/heads/main"
+        },
+        "queue": {
+          "id": 18,
+          "name": "high-memory-pool",
+          "pool": {
+            "id": 18,
+            "name": "high-memory-pool",
+            "isHosted": false
+          }
+        },
+        "triggers": [
+          {
+            "triggerType": "schedule",
+            "schedules": [
+              {
+                "branchFilters": ["+refs/heads/main"],
+                "daysToRun": ["monday", "tuesday", "wednesday", "thursday", "friday"],
+                "startHours": 1,
+                "startMinutes": 0,
+                "timeZoneId": "UTC",
+                "scheduleOnlyWithChanges": false
+              }
+            ]
+          }
+        ],
+        "variableGroups": [
+          { "id": 207, "name": "internal-network-credentials" },
+          { "id": 212, "name": "data-warehouse-credentials" }
+        ],
+        "variables": {},
+        "retentionRules": [
+          { "branches": ["+refs/heads/*"], "daysToKeep": 30, "minimumToKeep": 10 }
+        ],
+        "latestBuild": {
+          "id": 98420,
+          "buildNumber": "20260317.1",
+          "status": "completed",
+          "result": "succeeded",
+          "startTime": "2026-03-17T01:00:03Z",
+          "finishTime": "2026-03-17T03:52:17Z",
+          "sourceBranch": "refs/heads/main",
+          "sourceVersion": "5ef9a02b3c4d678901fa234567890123e4556677"
+        },
+        "_meta": {
+          "owner_team": "team-quant",
+          "last_modified_by": "m.patel@contoso.com",
+          "classification": "non-build-workload",
+          "notes": "NON-BUILD. Nightly VaR scenario sweep (50,000 scenarios). Runs weeknights on high-memory-pool. Uploads results to data-warehouse. 4-hour timeout. Needs internal network + high-memory compute."
+        }
+      },
+      {
+        "id": 113,
+        "name": "daily-positions-export",
+        "path": "\\Night Jobs\\Business",
+        "type": "build",
+        "queueStatus": "enabled",
+        "revision": 15,
+        "createdDate": "2022-11-01T14:30:00Z",
+        "project": {
+          "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+          "name": "shared-ci-platform"
+        },
+        "process": {
+          "yamlFilename": "night-jobs/business/daily-positions-export.yml",
+          "type": 2
+        },
+        "repository": {
+          "id": "shared-ci-platform",
+          "type": "TfsGit",
+          "name": "shared-ci-platform",
+          "defaultBranch": "refs/heads/main"
+        },
+        "queue": {
+          "id": 15,
+          "name": "linux-build-workers",
+          "pool": {
+            "id": 15,
+            "name": "linux-build-workers",
+            "isHosted": false
+          }
+        },
+        "triggers": [
+          {
+            "triggerType": "schedule",
+            "schedules": [
+              {
+                "branchFilters": ["+refs/heads/main"],
+                "daysToRun": ["monday", "tuesday", "wednesday", "thursday", "friday"],
+                "startHours": 23,
+                "startMinutes": 0,
+                "timeZoneId": "UTC",
+                "scheduleOnlyWithChanges": false
+              }
+            ]
+          }
+        ],
+        "variableGroups": [
+          { "id": 207, "name": "internal-network-credentials" },
+          { "id": 213, "name": "positions-db-credentials" }
+        ],
+        "variables": {},
+        "retentionRules": [
+          { "branches": ["+refs/heads/*"], "daysToKeep": 60, "minimumToKeep": 20 }
+        ],
+        "latestBuild": {
+          "id": 98410,
+          "buildNumber": "20260316.1",
+          "status": "completed",
+          "result": "succeeded",
+          "startTime": "2026-03-16T23:00:04Z",
+          "finishTime": "2026-03-17T00:15:33Z",
+          "sourceBranch": "refs/heads/main",
+          "sourceVersion": "6fa0b13c4d5e789012ab345678901234f5667788"
+        },
+        "_meta": {
+          "owner_team": "team-reporting",
+          "last_modified_by": "l.garcia@contoso.com",
+          "classification": "non-build-workload",
+          "notes": "NON-BUILD. Daily data export to downstream reporting. Runs weekdays at 7 PM ET (23:00 UTC). Uses linux-build-workers for internal DB access via pyodbc. Distributes Excel reports to team-reporting and team-quant."
+        }
+      },
+      {
+        "id": 114,
+        "name": "attestation-backfill-weekly",
+        "path": "\\Night Jobs\\Compliance",
+        "type": "build",
+        "queueStatus": "enabled",
+        "revision": 6,
+        "createdDate": "2023-10-30T10:00:00Z",
+        "project": {
+          "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+          "name": "shared-ci-platform"
+        },
+        "process": {
+          "yamlFilename": "night-jobs/compliance/attestation-backfill.yml",
+          "type": 2
+        },
+        "repository": {
+          "id": "shared-ci-platform",
+          "type": "TfsGit",
+          "name": "shared-ci-platform",
+          "defaultBranch": "refs/heads/main"
+        },
+        "queue": {
+          "id": 15,
+          "name": "linux-build-workers",
+          "pool": {
+            "id": 15,
+            "name": "linux-build-workers",
+            "isHosted": false
+          }
+        },
+        "triggers": [
+          {
+            "triggerType": "schedule",
+            "schedules": [
+              {
+                "branchFilters": ["+refs/heads/main"],
+                "daysToRun": ["sunday"],
+                "startHours": 3,
+                "startMinutes": 0,
+                "timeZoneId": "UTC",
+                "scheduleOnlyWithChanges": false
+              }
+            ]
+          }
+        ],
+        "variableGroups": [
+          { "id": 206, "name": "compliance-store-credentials" }
+        ],
+        "variables": {},
+        "retentionRules": [
+          { "branches": ["+refs/heads/*"], "daysToKeep": 365, "minimumToKeep": 52 }
+        ],
+        "latestBuild": {
+          "id": 98350,
+          "buildNumber": "20260316.1",
+          "status": "completed",
+          "result": "succeeded",
+          "startTime": "2026-03-16T03:00:02Z",
+          "finishTime": "2026-03-16T04:33:19Z",
+          "sourceBranch": "refs/heads/main",
+          "sourceVersion": "7ab1c24d5e6f890123bc456789012345a6778899"
+        },
+        "_meta": {
+          "owner_team": "shared-ci-platform",
+          "last_modified_by": "k.johnson@contoso.com",
+          "classification": "non-build-workload",
+          "notes": "NON-BUILD. Weekly compliance attestation backfill. Scans compliance-store for gaps, regenerates missing records. Uses linux-build-workers for compliance-store network access. 365-day retention for audit."
+        }
+      },
+      {
+        "id": 115,
+        "name": "bulk-reprocess-trades",
+        "path": "\\Ad Hoc",
+        "type": "build",
+        "queueStatus": "enabled",
+        "revision": 4,
+        "createdDate": "2024-02-10T11:00:00Z",
+        "project": {
+          "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+          "name": "shared-ci-platform"
+        },
+        "process": {
+          "yamlFilename": "adhoc/bulk-reprocess-trades.yml",
+          "type": 2
+        },
+        "repository": {
+          "id": "shared-ci-platform",
+          "type": "TfsGit",
+          "name": "shared-ci-platform",
+          "defaultBranch": "refs/heads/main"
+        },
+        "queue": {
+          "id": 9,
+          "name": "Azure Pipelines",
+          "pool": {
+            "id": 9,
+            "name": "Azure Pipelines",
+            "isHosted": true
+          }
+        },
+        "triggers": [],
+        "variableGroups": [
+          { "id": 207, "name": "internal-network-credentials" }
+        ],
+        "variables": {},
+        "retentionRules": [
+          { "branches": ["+refs/heads/*"], "daysToKeep": 90, "minimumToKeep": 5 }
+        ],
+        "latestBuild": {
+          "id": 96800,
+          "buildNumber": "20260225.1",
+          "status": "completed",
+          "result": "succeeded",
+          "startTime": "2026-02-25T14:20:00Z",
+          "finishTime": "2026-02-25T19:45:12Z",
+          "sourceBranch": "refs/heads/main",
+          "sourceVersion": "8bc2d35e6f7a901234cd567890123456b7889900",
+          "parameters": "{\"startDate\": \"2026-01-01\", \"endDate\": \"2026-01-31\", \"tradeTypes\": \"fx-forwards\"}"
+        },
+        "_meta": {
+          "owner_team": "unknown",
+          "last_modified_by": "unknown-service-account@contoso.com",
+          "classification": "adhoc",
+          "notes": "Ad-hoc manual pipeline. Used for bulk trade reprocessing after data corrections. Last run Feb 2026. 8-hour timeout. Unclear ownership."
+        }
+      },
+      {
+        "id": 116,
+        "name": "onetime-data-migration",
+        "path": "\\Ad Hoc",
+        "type": "build",
+        "queueStatus": "paused",
+        "revision": 2,
+        "createdDate": "2024-08-15T09:00:00Z",
+        "project": {
+          "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+          "name": "shared-ci-platform"
+        },
+        "process": {
+          "yamlFilename": "adhoc/onetime-data-migration.yml",
+          "type": 2
+        },
+        "repository": {
+          "id": "shared-ci-platform",
+          "type": "TfsGit",
+          "name": "shared-ci-platform",
+          "defaultBranch": "refs/heads/main"
+        },
+        "queue": {
+          "id": 9,
+          "name": "Azure Pipelines",
+          "pool": {
+            "id": 9,
+            "name": "Azure Pipelines",
+            "isHosted": true
+          }
+        },
+        "triggers": [],
+        "variableGroups": [
+          { "id": 213, "name": "positions-db-credentials" }
+        ],
+        "variables": {},
+        "retentionRules": [
+          { "branches": ["+refs/heads/*"], "daysToKeep": 30, "minimumToKeep": 1 }
+        ],
+        "latestBuild": {
+          "id": 88900,
+          "buildNumber": "20240820.1",
+          "status": "completed",
+          "result": "succeeded",
+          "startTime": "2024-08-20T10:30:00Z",
+          "finishTime": "2024-08-20T14:12:45Z",
+          "sourceBranch": "refs/heads/main",
+          "sourceVersion": "9cd3e46f7a8b012345de678901234567c8990011"
+        },
+        "_meta": {
+          "owner_team": "unknown",
+          "last_modified_by": "unknown-service-account@contoso.com",
+          "classification": "adhoc-stale",
+          "notes": "Paused in ADO. One-time migration pipeline created Aug 2024 — should have been deleted. Last run Aug 2024. Candidate for deletion."
+        }
+      },
+      {
+        "id": 117,
+        "name": "old-pricing-pipeline",
+        "path": "\\Deprecated",
+        "type": "build",
+        "queueStatus": "disabled",
+        "revision": 3,
+        "createdDate": "2020-01-10T08:00:00Z",
+        "project": {
+          "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+          "name": "shared-ci-platform"
+        },
+        "process": {
+          "yamlFilename": "deprecated/old-pricing-pipeline.yml",
+          "type": 2
+        },
+        "repository": {
+          "id": "shared-ci-platform",
+          "type": "TfsGit",
+          "name": "shared-ci-platform",
+          "defaultBranch": "refs/heads/main"
+        },
+        "queue": {
+          "id": 9,
+          "name": "Azure Pipelines",
+          "pool": {
+            "id": 9,
+            "name": "Azure Pipelines",
+            "isHosted": true
+          }
+        },
+        "triggers": [],
+        "variableGroups": [],
+        "variables": {},
+        "retentionRules": [
+          { "branches": ["+refs/heads/*"], "daysToKeep": 30, "minimumToKeep": 1 }
+        ],
+        "latestBuild": {
+          "id": 72100,
+          "buildNumber": "20230615.2",
+          "status": "completed",
+          "result": "succeeded",
+          "startTime": "2023-06-15T09:00:00Z",
+          "finishTime": "2023-06-15T09:12:30Z",
+          "sourceBranch": "refs/heads/main",
+          "sourceVersion": "0de4f57a8b9c123456ef789012345678d9001122"
+        },
+        "_meta": {
+          "owner_team": "none",
+          "last_modified_by": "contractor-account@contoso.com",
+          "classification": "deprecated",
+          "notes": "Disabled in ADO. Replaced by pricing-engine-ci (ID 101). Last run June 2023. Kept for reference. Uses legacy/master-support frozen branch + inline .NET 6 build."
+        }
+      },
+      {
+        "id": 118,
+        "name": "batch-runner-v1",
+        "path": "\\Deprecated",
+        "type": "build",
+        "queueStatus": "disabled",
+        "revision": 2,
+        "createdDate": "2020-04-05T12:00:00Z",
+        "project": {
+          "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+          "name": "shared-ci-platform"
+        },
+        "process": {
+          "yamlFilename": "deprecated/batch-runner-v1.yml",
+          "type": 2
+        },
+        "repository": {
+          "id": "shared-ci-platform",
+          "type": "TfsGit",
+          "name": "shared-ci-platform",
+          "defaultBranch": "refs/heads/main"
+        },
+        "queue": {
+          "id": 9,
+          "name": "Azure Pipelines",
+          "pool": {
+            "id": 9,
+            "name": "Azure Pipelines",
+            "isHosted": true
+          }
+        },
+        "triggers": [],
+        "variableGroups": [],
+        "variables": {
+          "pythonVersion": { "value": "3.8" }
+        },
+        "retentionRules": [
+          { "branches": ["+refs/heads/*"], "daysToKeep": 30, "minimumToKeep": 1 }
+        ],
+        "latestBuild": {
+          "id": 68500,
+          "buildNumber": "20230201.1",
+          "status": "completed",
+          "result": "failed",
+          "startTime": "2023-02-01T08:00:00Z",
+          "finishTime": "2023-02-01T12:10:45Z",
+          "sourceBranch": "refs/heads/main",
+          "sourceVersion": "1ef5a68b9c0d234567fa890123456789e0112233"
+        },
+        "_meta": {
+          "owner_team": "none",
+          "last_modified_by": "contractor-account@contoso.com",
+          "classification": "deprecated",
+          "notes": "Disabled in ADO. Original batch runner that mixed build + compute in one pipeline. Replaced by risk-batch-ci + night-jobs. Last run (failed) Feb 2023. Python 3.8."
+        }
+      }
+    ]
+  },
+
+  "build_runs_summary": {
+    "_endpoint": "Aggregated from GET https://dev.azure.com/contoso-financial/shared-ci-platform/_apis/build/builds?api-version=7.1&definitions={id}&$top=100",
+    "_description": "Summarized run history per pipeline over the last 90 days. Shows frequency, success rate, and average duration — data only available from ADO, not from YAML.",
+    "value": [
+      { "definitionId": 101, "definitionName": "pricing-engine-ci",         "totalRuns": 47,  "succeeded": 44, "failed": 2, "cancelled": 1, "avgDurationMinutes": 7.5,   "lastRunDate": "2026-03-14T14:22:10Z" },
+      { "definitionId": 102, "definitionName": "portfolio-api-ci",           "totalRuns": 31,  "succeeded": 29, "failed": 2, "cancelled": 0, "avgDurationMinutes": 9.8,   "lastRunDate": "2026-03-12T10:05:22Z" },
+      { "definitionId": 103, "definitionName": "portfolio-api-canary",       "totalRuns": 5,   "succeeded": 5,  "failed": 0, "cancelled": 0, "avgDurationMinutes": 8.5,   "lastRunDate": "2026-02-28T16:40:00Z" },
+      { "definitionId": 104, "definitionName": "risk-batch-ci",              "totalRuns": 38,  "succeeded": 35, "failed": 3, "cancelled": 0, "avgDurationMinutes": 13.7,  "lastRunDate": "2026-03-15T08:12:00Z" },
+      { "definitionId": 105, "definitionName": "risk-batch-legacy",          "totalRuns": 2,   "succeeded": 2,  "failed": 0, "cancelled": 0, "avgDurationMinutes": 8.7,   "lastRunDate": "2026-01-10T03:00:12Z" },
+      { "definitionId": 106, "definitionName": "frontend-workbench-ci",      "totalRuns": 62,  "succeeded": 58, "failed": 3, "cancelled": 1, "avgDurationMinutes": 12.3,  "lastRunDate": "2026-03-16T11:30:00Z" },
+      { "definitionId": 107, "definitionName": "regulatory-reporting-ci",    "totalRuns": 65,  "succeeded": 61, "failed": 4, "cancelled": 0, "avgDurationMinutes": 82.4,  "lastRunDate": "2026-03-17T06:00:05Z" },
+      { "definitionId": 108, "definitionName": "market-sim-ci",              "totalRuns": 18,  "succeeded": 16, "failed": 2, "cancelled": 0, "avgDurationMinutes": 23.4,  "lastRunDate": "2026-03-08T09:15:00Z" },
+      { "definitionId": 109, "definitionName": "ops-control-plane-ci",       "totalRuns": 25,  "succeeded": 24, "failed": 1, "cancelled": 0, "avgDurationMinutes": 7.8,   "lastRunDate": "2026-03-13T16:05:00Z" },
+      { "definitionId": 110, "definitionName": "notebook-executor-nightly",  "totalRuns": 90,  "succeeded": 72, "failed": 0, "cancelled": 0, "avgDurationMinutes": 165.2, "lastRunDate": "2026-03-17T02:00:08Z", "partiallySucceeded": 18 },
+      { "definitionId": 111, "definitionName": "scenario-runner-weekly",     "totalRuns": 13,  "succeeded": 11, "failed": 2, "cancelled": 0, "avgDurationMinutes": 228.1, "lastRunDate": "2026-03-14T22:00:05Z" },
+      { "definitionId": 112, "definitionName": "var-scenario-sweep-nightly", "totalRuns": 65,  "succeeded": 60, "failed": 5, "cancelled": 0, "avgDurationMinutes": 172.2, "lastRunDate": "2026-03-17T01:00:03Z" },
+      { "definitionId": 113, "definitionName": "daily-positions-export",     "totalRuns": 65,  "succeeded": 63, "failed": 2, "cancelled": 0, "avgDurationMinutes": 75.5,  "lastRunDate": "2026-03-16T23:00:04Z" },
+      { "definitionId": 114, "definitionName": "attestation-backfill-weekly", "totalRuns": 13, "succeeded": 13, "failed": 0, "cancelled": 0, "avgDurationMinutes": 93.3,  "lastRunDate": "2026-03-16T03:00:02Z" },
+      { "definitionId": 115, "definitionName": "bulk-reprocess-trades",      "totalRuns": 3,   "succeeded": 3,  "failed": 0, "cancelled": 0, "avgDurationMinutes": 325.1, "lastRunDate": "2026-02-25T14:20:00Z" },
+      { "definitionId": 116, "definitionName": "onetime-data-migration",     "totalRuns": 1,   "succeeded": 1,  "failed": 0, "cancelled": 0, "avgDurationMinutes": 222.8, "lastRunDate": "2024-08-20T10:30:00Z" },
+      { "definitionId": 117, "definitionName": "old-pricing-pipeline",       "totalRuns": 0,   "succeeded": 0,  "failed": 0, "cancelled": 0, "avgDurationMinutes": 0,     "lastRunDate": "2023-06-15T09:00:00Z" },
+      { "definitionId": 118, "definitionName": "batch-runner-v1",            "totalRuns": 0,   "succeeded": 0,  "failed": 0, "cancelled": 0, "avgDurationMinutes": 0,     "lastRunDate": "2023-02-01T08:00:00Z" }
+    ]
+  },
+
+  "variable_groups": {
+    "_endpoint": "GET https://dev.azure.com/contoso-financial/shared-ci-platform/_apis/distributedtask/variablegroups?api-version=7.1",
+    "_description": "Shared variable groups referenced by pipelines. These are configured at the ADO project level, NOT in YAML. Any migration must map these to GitHub Actions secrets/variables or environment-level config.",
+    "count": 9,
+    "value": [
+      {
+        "id": 201,
+        "name": "shared-ci-secrets",
+        "description": "Common secrets shared across all CI pipelines",
+        "type": "Vsts",
+        "variables": {
+          "NUGET_FEED_URL": { "value": "https://pkgs.contoso-financial.com/nuget/v3/index.json" },
+          "NUGET_API_KEY": { "value": null, "isSecret": true },
+          "PIP_INDEX_URL": { "value": "https://pkgs.contoso-financial.com/pypi/simple/" },
+          "NPM_REGISTRY": { "value": "https://pkgs.contoso-financial.com/npm/" },
+          "NPM_TOKEN": { "value": null, "isSecret": true }
+        },
+        "isShared": true,
+        "pipelineReferences": [101, 102, 103, 104, 105, 106, 107, 109]
+      },
+      {
+        "id": 205,
+        "name": "artifact-registry-credentials",
+        "description": "Credentials for publishing to artifact-registry",
+        "type": "Vsts",
+        "variables": {
+          "ARTIFACT_REGISTRY_URL": { "value": "https://artifact-registry.contoso-financial.com/api/v1" },
+          "ARTIFACT_REGISTRY_TOKEN": { "value": null, "isSecret": true }
+        },
+        "isShared": true,
+        "pipelineReferences": [101, 102, 104]
+      },
+      {
+        "id": 206,
+        "name": "compliance-store-credentials",
+        "description": "Credentials for compliance-store API access",
+        "type": "Vsts",
+        "variables": {
+          "COMPLIANCE_STORE_URL": { "value": "https://compliance-store.contoso-financial.com/api/v2" },
+          "COMPLIANCE_STORE_TOKEN": { "value": null, "isSecret": true },
+          "COMPLIANCE_STORE_CERT_THUMBPRINT": { "value": null, "isSecret": true }
+        },
+        "isShared": true,
+        "pipelineReferences": [107, 114]
+      },
+      {
+        "id": 207,
+        "name": "internal-network-credentials",
+        "description": "Service account credentials for accessing internal systems from build agents",
+        "type": "Vsts",
+        "variables": {
+          "INTERNAL_SVC_ACCOUNT": { "value": "svc-ci-runner@contoso-financial.com" },
+          "INTERNAL_SVC_PASSWORD": { "value": null, "isSecret": true },
+          "INTERNAL_CA_CERT_PATH": { "value": "/etc/ssl/certs/contoso-internal-ca.pem" }
+        },
+        "isShared": true,
+        "pipelineReferences": [110, 111, 112, 113, 115]
+      },
+      {
+        "id": 208,
+        "name": "risk-batch-config",
+        "description": "Risk batch-specific configuration",
+        "type": "Vsts",
+        "variables": {
+          "RISK_DB_CONNECTION_STRING": { "value": null, "isSecret": true },
+          "RISK_MODEL_VERSION": { "value": "v4.2" },
+          "RISK_BATCH_MAX_RETRIES": { "value": "3" }
+        },
+        "isShared": false,
+        "pipelineReferences": [104]
+      },
+      {
+        "id": 209,
+        "name": "regulatory-reporting-config",
+        "description": "Regulatory reporting-specific settings",
+        "type": "Vsts",
+        "variables": {
+          "REPORTING_DB_CONNECTION_STRING": { "value": null, "isSecret": true },
+          "REPORTING_SMTP_SERVER": { "value": "smtp.contoso-financial.com" },
+          "REPORTING_DISTRIBUTION_LIST": { "value": "reg-reports@contoso-financial.com" }
+        },
+        "isShared": false,
+        "pipelineReferences": [107]
+      },
+      {
+        "id": 210,
+        "name": "frontend-cdn-config",
+        "description": "CDN configuration for frontend deployments",
+        "type": "Vsts",
+        "variables": {
+          "CDN_ENDPOINT": { "value": "https://cdn.contoso-financial.com" },
+          "CDN_STORAGE_ACCOUNT": { "value": "contosofrontendcdn" },
+          "CDN_STORAGE_KEY": { "value": null, "isSecret": true },
+          "CDN_PURGE_API_KEY": { "value": null, "isSecret": true }
+        },
+        "isShared": false,
+        "pipelineReferences": [106]
+      },
+      {
+        "id": 211,
+        "name": "ops-infra-credentials",
+        "description": "Infrastructure credentials for ops-control-plane deployments",
+        "type": "Vsts",
+        "variables": {
+          "K8S_CLUSTER_URL": { "value": "https://k8s.internal.contoso-financial.com:6443" },
+          "K8S_SERVICE_ACCOUNT_TOKEN": { "value": null, "isSecret": true },
+          "K8S_NAMESPACE": { "value": "ops-platform" }
+        },
+        "isShared": false,
+        "pipelineReferences": [109]
+      },
+      {
+        "id": 212,
+        "name": "data-warehouse-credentials",
+        "description": "Credentials for uploading results to the data warehouse",
+        "type": "Vsts",
+        "variables": {
+          "DW_CONNECTION_STRING": { "value": null, "isSecret": true },
+          "DW_SCHEMA": { "value": "risk_analytics" }
+        },
+        "isShared": false,
+        "pipelineReferences": [112]
+      },
+      {
+        "id": 213,
+        "name": "positions-db-credentials",
+        "description": "Database credentials for positions data (used by exports and migration)",
+        "type": "Vsts",
+        "variables": {
+          "POSITIONS_DB_CONNECTION_STRING": { "value": null, "isSecret": true },
+          "POSITIONS_DB_READONLY_STRING": { "value": null, "isSecret": true }
+        },
+        "isShared": false,
+        "pipelineReferences": [113, 116]
+      }
+    ]
+  },
+
+  "service_connections": {
+    "_endpoint": "GET https://dev.azure.com/contoso-financial/shared-ci-platform/_apis/serviceendpoint/endpoints?api-version=7.1",
+    "_description": "Service connections configured at the project level. These provide authenticated access to external services during pipeline runs. Must be mapped to GitHub Actions OIDC, secrets, or service account tokens.",
+    "count": 5,
+    "value": [
+      {
+        "id": "sc-001-aaaa-bbbb-cccc-ddddeeee0001",
+        "name": "AzureSubscription-Dev",
+        "type": "azurerm",
+        "description": "Azure Resource Manager connection for dev environment deployments",
+        "authorization": {
+          "scheme": "ServicePrincipal",
+          "parameters": {
+            "tenantId": "t1e2n3a4-n5t6-i7d8-h9e0-re1234567890",
+            "servicePrincipalId": "sp-dev-deploy-001",
+            "authenticationType": "spnKey"
+          }
+        },
+        "isShared": true,
+        "isReady": true,
+        "serviceEndpointProjectReferences": [
+          { "name": "AzureSubscription-Dev", "projectReference": { "name": "shared-ci-platform" } }
+        ],
+        "_pipelinesUsing": [101, 104, 106]
+      },
+      {
+        "id": "sc-001-aaaa-bbbb-cccc-ddddeeee0002",
+        "name": "AzureSubscription-Staging",
+        "type": "azurerm",
+        "description": "Azure Resource Manager connection for staging environment",
+        "authorization": {
+          "scheme": "ServicePrincipal",
+          "parameters": {
+            "tenantId": "t1e2n3a4-n5t6-i7d8-h9e0-re1234567890",
+            "servicePrincipalId": "sp-staging-deploy-001",
+            "authenticationType": "spnKey"
+          }
+        },
+        "isShared": true,
+        "isReady": true,
+        "serviceEndpointProjectReferences": [
+          { "name": "AzureSubscription-Staging", "projectReference": { "name": "shared-ci-platform" } }
+        ],
+        "_pipelinesUsing": [102, 106]
+      },
+      {
+        "id": "sc-001-aaaa-bbbb-cccc-ddddeeee0003",
+        "name": "AzureSubscription-Prod",
+        "type": "azurerm",
+        "description": "Azure Resource Manager connection for production deployments",
+        "authorization": {
+          "scheme": "ServicePrincipal",
+          "parameters": {
+            "tenantId": "t1e2n3a4-n5t6-i7d8-h9e0-re1234567890",
+            "servicePrincipalId": "sp-prod-deploy-001",
+            "authenticationType": "spnKey"
+          }
+        },
+        "isShared": false,
+        "isReady": true,
+        "serviceEndpointProjectReferences": [
+          { "name": "AzureSubscription-Prod", "projectReference": { "name": "shared-ci-platform" } }
+        ],
+        "_pipelinesUsing": [107]
+      },
+      {
+        "id": "sc-001-aaaa-bbbb-cccc-ddddeeee0004",
+        "name": "ContainerRegistry-ACR",
+        "type": "dockerregistry",
+        "description": "Azure Container Registry for Docker image publishing",
+        "authorization": {
+          "scheme": "ServicePrincipal",
+          "parameters": {
+            "loginServer": "contosofinancial.azurecr.io"
+          }
+        },
+        "isShared": true,
+        "isReady": true,
+        "serviceEndpointProjectReferences": [
+          { "name": "ContainerRegistry-ACR", "projectReference": { "name": "shared-ci-platform" } }
+        ],
+        "_pipelinesUsing": [108, 109]
+      },
+      {
+        "id": "sc-001-aaaa-bbbb-cccc-ddddeeee0005",
+        "name": "GitHub-SourceMirror",
+        "type": "github",
+        "description": "GitHub connection used for syncing upstream references",
+        "authorization": {
+          "scheme": "PersonalAccessToken"
+        },
+        "isShared": false,
+        "isReady": true,
+        "serviceEndpointProjectReferences": [
+          { "name": "GitHub-SourceMirror", "projectReference": { "name": "shared-ci-platform" } }
+        ],
+        "_pipelinesUsing": []
+      }
+    ]
+  },
+
+  "environments": {
+    "_endpoint": "GET https://dev.azure.com/contoso-financial/shared-ci-platform/_apis/pipelines/environments?api-version=7.1",
+    "_description": "Deployment environments with approval/check configurations. These are configured in ADO's UI and gate deployments — they must be recreated as GitHub Environments with equivalent protection rules.",
+    "count": 5,
+    "value": [
+      {
+        "id": 1,
+        "name": "dev",
+        "description": "Development environment",
+        "resources": [],
+        "checks": [],
+        "_pipelinesUsing": [101, 104]
+      },
+      {
+        "id": 2,
+        "name": "staging",
+        "description": "Staging/pre-production environment",
+        "resources": [],
+        "checks": [
+          {
+            "type": "approval",
+            "settings": {
+              "approvers": ["shared-ci-platform-team"],
+              "minApprovers": 1,
+              "instructions": "Verify staging test results before proceeding"
+            }
+          }
+        ],
+        "_pipelinesUsing": [102]
+      },
+      {
+        "id": 3,
+        "name": "preprod",
+        "description": "Pre-production validation environment",
+        "resources": [],
+        "checks": [
+          {
+            "type": "approval",
+            "settings": {
+              "approvers": ["shared-ci-platform-team", "release-managers"],
+              "minApprovers": 2,
+              "instructions": "Review compliance attestation and artifact baseline comparison"
+            }
+          },
+          {
+            "type": "businessHours",
+            "settings": {
+              "timeZone": "Eastern Standard Time",
+              "startTime": "09:00",
+              "endTime": "17:00",
+              "daysOfWeek": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+            }
+          }
+        ],
+        "_pipelinesUsing": []
+      },
+      {
+        "id": 4,
+        "name": "prod",
+        "description": "Production environment",
+        "resources": [],
+        "checks": [
+          {
+            "type": "approval",
+            "settings": {
+              "approvers": ["release-managers", "service-owner"],
+              "minApprovers": 2,
+              "instructions": "Production deployment requires release manager AND service owner approval. Verify compliance attestation is present."
+            }
+          },
+          {
+            "type": "businessHours",
+            "settings": {
+              "timeZone": "Eastern Standard Time",
+              "startTime": "09:00",
+              "endTime": "16:00",
+              "daysOfWeek": ["monday", "tuesday", "wednesday", "thursday"]
+            }
+          },
+          {
+            "type": "exclusiveLock",
+            "settings": {
+              "description": "Only one production deployment at a time"
+            }
+          }
+        ],
+        "_pipelinesUsing": [107]
+      },
+      {
+        "id": 5,
+        "name": "dev-frontend",
+        "description": "Frontend development environment (CDN)",
+        "resources": [],
+        "checks": [],
+        "_pipelinesUsing": [106]
+      },
+      {
+        "id": 6,
+        "name": "staging-frontend",
+        "description": "Frontend staging environment (CDN)",
+        "resources": [],
+        "checks": [
+          {
+            "type": "approval",
+            "settings": {
+              "approvers": ["team-frontend"],
+              "minApprovers": 1,
+              "instructions": "Verify SSR bundle and CDN purge before promoting"
+            }
+          }
+        ],
+        "_pipelinesUsing": [106]
+      }
+    ]
+  },
+
+  "agent_pools": {
+    "_endpoint": "GET https://dev.azure.com/contoso-financial/_apis/distributedtask/pools?api-version=7.1",
+    "_description": "Agent pools available in the organization. Hosted pools map cleanly to GitHub-hosted runners. Self-hosted pools require self-hosted GHA runners or alternative infrastructure. This is critical for non-build workloads.",
+    "count": 4,
+    "value": [
+      {
+        "id": 9,
+        "name": "Azure Pipelines",
+        "isHosted": true,
+        "poolType": "automation",
+        "size": 0,
+        "isLegacy": false,
+        "options": {
+          "vmImages": ["ubuntu-latest", "ubuntu-20.04", "windows-latest", "macos-latest"]
+        },
+        "_migration_note": "Maps directly to GitHub-hosted runners (ubuntu-latest, windows-latest, macos-latest). No migration concern.",
+        "_pipelinesUsing": [101, 102, 103, 104, 105, 106, 107, 108, 109, 115, 116, 117, 118]
+      },
+      {
+        "id": 15,
+        "name": "linux-build-workers",
+        "isHosted": false,
+        "poolType": "automation",
+        "size": 8,
+        "isLegacy": false,
+        "agentCloudId": null,
+        "targetSize": 8,
+        "agents": [
+          { "id": 1, "name": "build-worker-01", "status": "online", "os": "Linux", "osVersion": "Ubuntu 22.04" },
+          { "id": 2, "name": "build-worker-02", "status": "online", "os": "Linux", "osVersion": "Ubuntu 22.04" },
+          { "id": 3, "name": "build-worker-03", "status": "online", "os": "Linux", "osVersion": "Ubuntu 22.04" },
+          { "id": 4, "name": "build-worker-04", "status": "online", "os": "Linux", "osVersion": "Ubuntu 22.04" },
+          { "id": 5, "name": "build-worker-05", "status": "online", "os": "Linux", "osVersion": "Ubuntu 22.04" },
+          { "id": 6, "name": "build-worker-06", "status": "online", "os": "Linux", "osVersion": "Ubuntu 22.04" },
+          { "id": 7, "name": "build-worker-07", "status": "offline", "os": "Linux", "osVersion": "Ubuntu 22.04" },
+          { "id": 8, "name": "build-worker-08", "status": "offline", "os": "Linux", "osVersion": "Ubuntu 22.04" }
+        ],
+        "_capabilities": {
+          "network_access": ["compliance-store", "positions-db", "internal-smtp", "data-warehouse"],
+          "installed_tools": ["python3.10", "python3.11", "docker", "jupyter", "conda"],
+          "memory_gb": 16,
+          "cpu_cores": 4,
+          "disk_gb": 200
+        },
+        "_migration_note": "Self-hosted pool with internal network access. Pipelines using this pool need internal network connectivity — cannot migrate to GitHub-hosted runners without network peering or a self-hosted GHA runner deployed in the same network segment.",
+        "_pipelinesUsing": [110, 113, 114]
+      },
+      {
+        "id": 18,
+        "name": "high-memory-pool",
+        "isHosted": false,
+        "poolType": "automation",
+        "size": 4,
+        "isLegacy": false,
+        "agentCloudId": null,
+        "targetSize": 4,
+        "agents": [
+          { "id": 10, "name": "hm-worker-01", "status": "online", "os": "Linux", "osVersion": "Ubuntu 22.04" },
+          { "id": 11, "name": "hm-worker-02", "status": "online", "os": "Linux", "osVersion": "Ubuntu 22.04" },
+          { "id": 12, "name": "hm-worker-03", "status": "online", "os": "Linux", "osVersion": "Ubuntu 22.04" },
+          { "id": 13, "name": "hm-worker-04", "status": "online", "os": "Linux", "osVersion": "Ubuntu 22.04" }
+        ],
+        "_capabilities": {
+          "network_access": ["compliance-store", "positions-db", "internal-smtp", "data-warehouse", "compute-cluster"],
+          "installed_tools": ["python3.11", "docker", "numpy", "scipy", "pyarrow"],
+          "memory_gb": 128,
+          "cpu_cores": 32,
+          "disk_gb": 1000
+        },
+        "_migration_note": "High-memory self-hosted pool (128GB RAM, 32 cores). Used exclusively by non-build compute workloads (Monte Carlo, VaR). These workloads should NOT migrate to GHA — they need dedicated compute infrastructure (K8s jobs, AWS Batch, Azure Container Instances, etc.).",
+        "_pipelinesUsing": [111, 112]
+      },
+      {
+        "id": 22,
+        "name": "windows-build-workers",
+        "isHosted": false,
+        "poolType": "automation",
+        "size": 2,
+        "isLegacy": true,
+        "agentCloudId": null,
+        "targetSize": 2,
+        "agents": [
+          { "id": 20, "name": "win-worker-01", "status": "online", "os": "Windows", "osVersion": "Windows Server 2022" },
+          { "id": 21, "name": "win-worker-02", "status": "offline", "os": "Windows", "osVersion": "Windows Server 2019" }
+        ],
+        "_capabilities": {
+          "network_access": ["internal-smtp"],
+          "installed_tools": ["dotnet-6.0", "dotnet-8.0", "nuget", "msbuild"],
+          "memory_gb": 32,
+          "cpu_cores": 8,
+          "disk_gb": 500
+        },
+        "_migration_note": "Legacy Windows self-hosted pool. Not currently referenced by any active pipeline YAML but may be used by pipelines with ADO-level pool overrides. Half offline. Candidate for decommission after migration audit.",
+        "_pipelinesUsing": []
+      }
+    ]
+  }
+}
