@@ -1,0 +1,224 @@
+# =============================================================================
+# frontend-workbench CI/CD Pipeline (GitHub Actions)
+# =============================================================================
+# Migrated from: services/frontend-workbench/azure-pipelines.yml
+# Stack: Node.js 18.x (React) with SSR
+# Template source: alt-templates/frontend (team/frontend-custom branch)
+# Owner: team-frontend
+# Pool: ubuntu-latest (hosted)
+#
+# ADO-to-GitHub Actions Task Mapping:
+# -----------------------------------------------------------------------
+# ADO Task / Construct               | GitHub Actions Equivalent
+# -----------------------------------------------------------------------
+# NodeTool@0                          | actions/setup-node@v4
+# npm ci (script)                     | npm ci (run step)
+# npm run lint (script)               | npm run lint (run step)
+# npm run build:react (script)        | npm run build:react (run step)
+# npm run build:ssr (script, cond.)   | npm run build:ssr (run step, cond.)
+# npm test (script)                   | npm test (run step)
+# ArchiveFiles@2                      | zip command in run step
+# PublishBuildArtifacts@1             | actions/upload-artifact@v4
+# download: current                   | actions/download-artifact@v4
+# ADO deployment job + environment    | GH Actions job with environment:
+# Lighthouse CI (script)              | Lighthouse CI (run step)
+# -----------------------------------------------------------------------
+#
+# ADO Variable Mapping:
+# -----------------------------------------------------------------------
+# ADO Variable                        | GitHub Actions Equivalent
+# -----------------------------------------------------------------------
+# $(Build.ArtifactStagingDirectory)   | ${{ runner.temp }}/staging
+# $(Build.SourcesDirectory)           | ${{ github.workspace }}
+# $(Build.BuildId)                    | ${{ github.run_id }}
+# $(Build.SourceBranch)               | ${{ github.ref }}
+# $(Build.BuildNumber)                | ${{ github.run_number }}
+# $(system.defaultWorkingDirectory)   | ${{ github.workspace }}
+# $(artifactName)                     | env.ARTIFACT_NAME
+# -----------------------------------------------------------------------
+#
+# ADO Stage-to-GH Job Mapping:
+# -----------------------------------------------------------------------
+# ADO Stage                           | GH Actions Job
+# -----------------------------------------------------------------------
+# Build                               | build
+# Deploy_Dev                          | deploy-dev
+# Deploy_Staging                      | deploy-staging (conditional: main)
+# -----------------------------------------------------------------------
+#
+# Intentional Additions:
+# - on.pull_request trigger added (standard GH Actions CI practice)
+# - workflow_dispatch added for manual runs
+#
+# =============================================================================
+
+name: frontend-workbench CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/*'
+    paths:
+      - 'services/frontend-workbench/**'
+
+  pull_request:
+    branches:
+      - main
+      - 'feature/*'
+    paths:
+      - 'services/frontend-workbench/**'
+
+  workflow_dispatch:
+
+env:
+  ARTIFACT_NAME: frontend-workbench-bundle
+
+jobs:
+  # ===========================================================================
+  # Build Job (maps to ADO Stage: Build)
+  # ===========================================================================
+  build:
+    name: Build frontend-workbench
+    runs-on: ubuntu-latest
+
+    steps:
+      # --- Template: alt-templates/frontend/frontend-build.yml (expanded) ---
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Maps to: NodeTool@0 (Install Node.js 18.x)
+      - name: Install Node.js 18.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+
+      # Maps to: script: npm ci
+      - name: Install dependencies
+        run: npm ci
+        working-directory: services/frontend-workbench
+
+      # Maps to: script: npm run lint
+      - name: Lint check
+        run: npm run lint
+        working-directory: services/frontend-workbench
+
+      # Maps to: script: npm run build:react
+      # Parameter: framework = 'react'
+      - name: Build react app
+        run: npm run build:react
+        working-directory: services/frontend-workbench
+
+      # Maps to: script: npm run build:ssr (conditional: enableSSR == true)
+      # Parameter: enableSSR = true -> condition evaluates to true
+      - name: Build SSR bundle
+        run: npm run build:ssr
+        working-directory: services/frontend-workbench
+
+      # Maps to: script: npm test -- --ci --coverage
+      - name: Run tests
+        run: npm test -- --ci --coverage
+        working-directory: services/frontend-workbench
+
+      # Maps to: ArchiveFiles@2 (Archive frontend bundle)
+      - name: Create staging directory
+        run: mkdir -p "${{ runner.temp }}/staging"
+
+      - name: Archive frontend bundle
+        run: |
+          cd services/frontend-workbench/build
+          zip -r "${{ runner.temp }}/staging/${{ env.ARTIFACT_NAME }}.zip" .
+
+      # Maps to: script: npx lhci autorun (Lighthouse CI audit)
+      - name: Run Lighthouse CI audit
+        run: npx lhci autorun --collect.staticDistDir=build/ || true
+        working-directory: services/frontend-workbench
+
+      # Maps to: PublishBuildArtifacts@1 (Upload frontend bundle)
+      - name: Upload frontend bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/staging/
+          retention-days: 30
+
+  # ===========================================================================
+  # Deploy Dev Job (maps to ADO Stage: Deploy_Dev)
+  # ===========================================================================
+  deploy-dev:
+    name: Deploy to dev
+    runs-on: ubuntu-latest
+    needs: build
+    environment: dev-frontend
+
+    steps:
+      # --- Template: alt-templates/frontend/frontend-deploy.yml (expanded) ---
+      # Parameters: environment = 'dev', artifactName = frontend-workbench-bundle
+      # cdnPurge defaults to true
+
+      # Maps to: download: current (Download artifact)
+      - name: Download frontend bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/artifact
+
+      # Maps to: script: echo "Uploading static assets to CDN..."
+      - name: Upload to CDN
+        run: |
+          echo "Uploading static assets to CDN..."
+          echo "Environment: dev"
+
+      # Maps to: script: echo "Purging CDN cache..." (conditional: cdnPurge == true)
+      # cdnPurge defaults to true -> condition evaluates to true
+      - name: Purge CDN cache
+        run: |
+          echo "Purging CDN cache for dev..."
+
+      # Maps to: script: curl health check
+      - name: Health check
+        run: |
+          echo "Verifying deployment health..."
+          curl -sf https://dev.example.com/health || exit 1
+
+  # ===========================================================================
+  # Deploy Staging Job (maps to ADO Stage: Deploy_Staging)
+  # Conditional: only runs on main branch push (mirrors ADO condition)
+  # ===========================================================================
+  deploy-staging:
+    name: Deploy to staging
+    runs-on: ubuntu-latest
+    needs: deploy-dev
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: staging-frontend
+
+    steps:
+      # --- Template: alt-templates/frontend/frontend-deploy.yml (expanded) ---
+      # Parameters: environment = 'staging', artifactName = frontend-workbench-bundle
+      # cdnPurge defaults to true
+
+      # Maps to: download: current (Download artifact)
+      - name: Download frontend bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/artifact
+
+      # Maps to: script: echo "Uploading static assets to CDN..."
+      - name: Upload to CDN
+        run: |
+          echo "Uploading static assets to CDN..."
+          echo "Environment: staging"
+
+      # Maps to: script: echo "Purging CDN cache..." (conditional: cdnPurge == true)
+      # cdnPurge defaults to true -> condition evaluates to true
+      - name: Purge CDN cache
+        run: |
+          echo "Purging CDN cache for staging..."
+
+      # Maps to: script: curl health check
+      - name: Health check
+        run: |
+          echo "Verifying deployment health..."
+          curl -sf https://staging.example.com/health || exit 1
