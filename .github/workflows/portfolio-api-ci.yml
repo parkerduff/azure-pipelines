@@ -1,0 +1,176 @@
+---
+# portfolio-api CI workflow
+# Migrated from: services/portfolio-api/azure-pipelines.yml
+# Stack: Java 17 / Maven
+# Original template source: central templates (master branch — legacy ref)
+#
+# ADO-to-GitHub Actions Mapping:
+#   ADO Template                                    -> GitHub Actions Equivalent
+#   -----------------------------------------------    -----------------------------------------------
+#   templates/build/build-java.yml@templates        -> Inline steps using actions/setup-java
+#     - JavaToolInstaller@0                         -> actions/setup-java@v4 (Temurin JDK 17)
+#     - Maven@4 (package)                           -> mvn package via shell
+#     - cp target/*.jar|*.war to staging            -> cp to $RUNNER_TEMP/staging
+#     - PublishBuildArtifacts@1                      -> actions/upload-artifact@v4
+#     - publish_artifact.py                         -> build-tools/scripts/publish_artifact.py
+#
+#   templates/release/release-standard.yml@templates -> GitHub environment + deployment job
+#     - deployment job                              -> job with environment protection rules
+#     - download: current                           -> actions/download-artifact@v4
+#     - notify_release_orchestrator.py              -> build-tools/scripts/notify_release_orchestrator.py
+#     - generate_attestation.py                     -> build-tools/scripts/generate_attestation.py
+#
+# Variable Syntax Mapping:
+#   $(Build.ArtifactStagingDirectory) -> ${{ runner.temp }}/staging
+#   $(Build.SourcesDirectory)         -> ${{ github.workspace }}
+#   $(Build.BuildId)                  -> ${{ github.run_id }}
+#   $(Build.SourceBranch)             -> ${{ github.ref }}
+#   $(Build.BuildNumber)              -> ${{ github.run_number }}
+#   $(artifactName)                   -> env.ARTIFACT_NAME
+
+name: portfolio-api CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'services/portfolio-api/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'services/portfolio-api/**'
+
+env:
+  ARTIFACT_NAME: portfolio-api-dist
+  JDK_VERSION: '17'
+  MAVEN_GOAL: 'package'
+  MAVEN_OPTIONS: '-B -DskipTests=false'
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Stage: Build (maps to ADO stage "Build" + templates/build/build-java.yml)
+  # --------------------------------------------------------------------------
+  build:
+    name: Build portfolio-api
+    runs-on: ubuntu-latest
+
+    steps:
+      # --- Checkout ---
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # --- Install JDK (maps to JavaToolInstaller@0) ---
+      - name: Install JDK ${{ env.JDK_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JDK_VERSION }}
+
+      # --- Maven build + test (maps to Maven@4 with goal 'package') ---
+      # Maven@4 in the ADO template runs goals with options '-B -DskipTests=false',
+      # and publishJUnitResults: true (runTests=true). Maven 'package' phase
+      # compiles, runs tests (surefire), and packages the artifact.
+      - name: Maven ${{ env.MAVEN_GOAL }}
+        run: |
+          mvn ${{ env.MAVEN_GOAL }} ${{ env.MAVEN_OPTIONS }} \
+            -f pom.xml
+        working-directory: ${{ github.workspace }}
+
+      # --- Stage build artifacts (maps to cp target/*.jar|*.war script) ---
+      # publishArtifacts=true in the template, so these steps are included.
+      - name: Stage build artifacts
+        run: |
+          mkdir -p ${{ runner.temp }}/staging
+          cp target/*.jar ${{ runner.temp }}/staging/ 2>/dev/null || true
+          cp target/*.war ${{ runner.temp }}/staging/ 2>/dev/null || true
+
+      # --- Upload build artifacts (maps to PublishBuildArtifacts@1) ---
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ runner.temp }}/staging
+
+      # --- Register artifact in Artifactory (maps to publish_artifact.py) ---
+      - name: Register artifact in Artifactory
+        run: |
+          python build-tools/scripts/publish_artifact.py \
+            --name "${{ env.ARTIFACT_NAME }}" \
+            --registry Artifactory \
+            --build-id "${{ github.run_id }}"
+        env:
+          BUILD_SOURCEBRANCH: ${{ github.ref }}
+          BUILD_SOURCEVERSION: ${{ github.sha }}
+          BUILD_ARTIFACTSTAGINGDIRECTORY: ${{ runner.temp }}/staging
+          AGENT_NAME: github-actions
+
+  # --------------------------------------------------------------------------
+  # Stage: Release to staging (maps to ADO stage "Release" +
+  #        templates/release/release-standard.yml)
+  #
+  # ADO parameters resolved:
+  #   environment: 'staging'
+  #   artifactName: 'portfolio-api-dist'
+  #   deployStrategy: 'rolling' (default)
+  #   requireApproval: false (default) — no condition applied
+  #   notifyReleaseOrchestrator: true (default)
+  #
+  # ADO dependsOn: Build -> GH Actions needs: build
+  # --------------------------------------------------------------------------
+  deploy-staging:
+    name: Deploy to staging
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    # Maps to ADO `environment: staging` — use GitHub Environments for
+    # protection rules and deployment tracking.
+    environment:
+      name: staging
+
+    steps:
+      # --- Download artifact (maps to `download: current`) ---
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ runner.temp }}/deploy
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # --- Execute deployment (maps to deploy script in release-standard.yml) ---
+      - name: Execute deployment
+        run: |
+          echo "Deploying ${{ env.ARTIFACT_NAME }} to staging"
+          echo "Strategy: rolling"
+
+      # --- Notify D2 (maps to notify_release_orchestrator.py) ---
+      # notifyReleaseOrchestrator=true (default), so this step is included.
+      - name: Notify D2
+        run: |
+          python build-tools/scripts/notify_release_orchestrator.py \
+            --service "${{ env.ARTIFACT_NAME }}" \
+            --env staging \
+            --build-id "${{ github.run_id }}" \
+            --status success
+        env:
+          BUILD_REQUESTEDFOR: ${{ github.actor }}
+          PIPELINE_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      # --- Generate compliance attestation (maps to generate_attestation.py) ---
+      - name: Generate compliance attestation
+        run: |
+          python build-tools/scripts/generate_attestation.py \
+            --artifact "${{ env.ARTIFACT_NAME }}" \
+            --env staging \
+            --build-id "${{ github.run_id }}"
+        env:
+          BUILD_SOURCEBRANCH: ${{ github.ref }}
+          BUILD_SOURCEVERSION: ${{ github.sha }}
+          BUILD_DEFINITIONNAME: portfolio-api CI
+          BUILD_ARTIFACTSTAGINGDIRECTORY: ${{ runner.temp }}/deploy
+          AGENT_OS: Linux
