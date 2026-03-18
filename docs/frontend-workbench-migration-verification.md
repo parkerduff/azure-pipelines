@@ -48,7 +48,7 @@ variables:                                 env:
 | npm run build:ssr    | ───────────────>  | npm run build:ssr    |
 | npm test --ci --cov  | ───────────────>  | npm test --ci --cov  |
 | ArchiveFiles@2       | ───────────────>  | zip command          |
-| lhci autorun         | ───────────────>  | lhci autorun         |
+|                      |    (ADDED) ─────>  | lhci autorun         |
 | PublishBuildArt@1    | ───────────────>  | upload-artifact@v4   |
 +---------------------+                   +---------------------+
          |                                          |
@@ -69,7 +69,7 @@ variables:                                 env:
 +---------------------+                   +---------------------+
 | Stage: Deploy_Stag  |                   | Job: deploy-staging |
 | dependsOn: Deploy_  |                   | needs: deploy-dev   |
-|   Dev               |                   | if: main && push    |
+|   Dev               |                   | if: main && !PR     |
 | condition:          |                   | environment:        |
 |   main branch only  |                   |   staging-frontend  |
 +---------------------+                   +---------------------+
@@ -96,8 +96,8 @@ variables:                                 env:
 | 6 | `script: npm run build:ssr` (conditional: enableSSR=true) | `run: npm run build:ssr` | MATCH | Condition evaluates to true (enableSSR=true), so step always runs for this pipeline |
 | 7 | `script: npm test -- --ci --coverage` | `run: npm test -- --ci --coverage` | MATCH | Identical command |
 | 8 | `ArchiveFiles@2` (zip build/ -> staging dir) | `run: zip -r ...` + `mkdir staging` | MATCH | Equivalent behavior; shell zip replaces ADO task |
-| 9 | `script: npx lhci autorun ... \|\| true` | `run: npx lhci autorun ... \|\| true` | MATCH | Identical command with same `|| true` failure suppression |
-| 10 | `PublishBuildArtifacts@1` | `actions/upload-artifact@v4` | MATCH | Artifact name pattern: `{name}-{run_id}` preserved |
+| 9 | `PublishBuildArtifacts@1` | `actions/upload-artifact@v4` | MATCH | Artifact name pattern: `{name}-{run_id}` preserved |
+| 10 | *(none)* | `run: npx lhci autorun ... \|\| true` | ADDED | Lighthouse CI audit not present in ADO template; added as new step with `|| true` failure suppression |
 
 ### Deploy Dev Stage / Job
 
@@ -123,7 +123,7 @@ variables:                                 env:
 |-----|------------|---------|
 | `Deploy_Dev.dependsOn: Build` | `deploy-dev.needs: build` | MATCH |
 | `Deploy_Staging.dependsOn: Deploy_Dev` | `deploy-staging.needs: deploy-dev` | MATCH |
-| `Deploy_Staging.condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))` | `deploy-staging.if: github.ref == 'refs/heads/main' && github.event_name == 'push'` | MATCH | Added `event_name == 'push'` to exclude PR runs, which is the correct GH Actions equivalent |
+| `Deploy_Staging.condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))` | `deploy-staging.if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'` | MATCH | Uses `!= 'pull_request'` instead of `== 'push'` to allow `workflow_dispatch` runs on main to deploy to staging, matching ADO behavior where manual runs on main would also deploy |
 
 ---
 
@@ -131,10 +131,10 @@ variables:                                 env:
 
 | Metric | Count |
 |--------|-------|
-| **Total ADO steps (expanded)** | 18 (10 build + 4 dev deploy + 4 staging deploy) |
-| **Matched steps** | 18 |
+| **Total ADO steps (expanded)** | 17 (9 build + 4 dev deploy + 4 staging deploy) |
+| **Matched steps** | 17 |
 | **Removed steps** | 0 |
-| **Added steps** | 1 (explicit checkout in build job) |
+| **Added steps** | 2 (explicit checkout + Lighthouse CI audit) |
 | **Total GH Actions steps** | 19 |
 
 ---
@@ -150,7 +150,8 @@ variables:                                 env:
 | 5 | ADO `deployment` job type mapped to regular job with `environment:` | GH Actions uses `environment:` on jobs instead of a dedicated deployment job type. Provides equivalent protection rules and approval gates. |
 | 6 | ADO environment names mapped to `{env}-frontend` | Matches ADO pattern `{environment}-frontend` from the deploy template (`${{ parameters.environment }}-frontend`). |
 | 7 | `working-directory` added to build steps | ADO pipeline runs in repo root with source in working directory; GH Actions needs explicit `working-directory` since the service code is nested under `services/frontend-workbench/`. |
-| 8 | Deploy_Staging `if:` adds `github.event_name == 'push'` | ADO condition only checks branch. In GH Actions, PRs targeting main would also have `refs/heads/main` as the base, so `event_name` check prevents unwanted staging deploys on PRs. |
+| 8 | Deploy_Staging `if:` adds `github.event_name != 'pull_request'` | ADO condition only checks branch. Uses `!= 'pull_request'` (not `== 'push'`) so that `workflow_dispatch` runs on main can still deploy to staging, matching ADO behavior. |
+| 9 | Lighthouse CI audit step added in build job | Not present in the ADO `frontend-build.yml` template. Added as a new quality gate with `\|\| true` to avoid blocking builds. |
 
 ---
 
