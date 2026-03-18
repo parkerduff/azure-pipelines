@@ -88,13 +88,17 @@ jobs:
 
       - name: Reprocess trades
         timeout-minutes: 420
+        env:
+          START_DATE: ${{ inputs.startDate }}
+          END_DATE: ${{ inputs.endDate }}
+          TRADE_TYPES: ${{ inputs.tradeTypes }}
         run: |
-          echo "Reprocessing trades from ${{ inputs.startDate }} to ${{ inputs.endDate }}"
-          echo "Trade types: ${{ inputs.tradeTypes }}"
+          echo "Reprocessing trades from $START_DATE to $END_DATE"
+          echo "Trade types: $TRADE_TYPES"
           python adhoc/scripts/reprocess_trades.py \
-            --start-date ${{ inputs.startDate }} \
-            --end-date ${{ inputs.endDate }} \
-            --types ${{ inputs.tradeTypes }} \
+            --start-date "$START_DATE" \
+            --end-date "$END_DATE" \
+            --types "$TRADE_TYPES" \
             --output "${{ runner.temp }}/staging/reprocessed/"
 
       - name: Archive reprocessed data
