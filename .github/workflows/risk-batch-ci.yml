@@ -1,0 +1,290 @@
+# =============================================================================
+# risk-batch CI — GitHub Actions Workflow
+# =============================================================================
+#
+# Migrated from: services/risk-batch/azure-pipelines.yml
+# Stack: Python 3.11
+# Owner: team-quant
+# Original template source: central (staging/preprod branch)
+# Original template branch ref: staging/preprod
+# Pool: vmImage ubuntu-latest (hosted) -> runs-on: ubuntu-latest
+#
+# NOTE: The staging/preprod branch adds retry logic for flaky tests
+#       (testRetryCount=3, pytest-rerunfailures --reruns 2) and a preprod
+#       validation stamp step. Both are preserved in this workflow.
+#
+# -----------------------------------------------------------------------------
+# ADO Task -> GitHub Actions Mapping
+# -----------------------------------------------------------------------------
+#
+#   ADO Task / Template                   | GH Actions Equivalent
+#   --------------------------------------|--------------------------------------
+#   UsePythonVersion@0                    | actions/setup-python@v5
+#   script (pip install)                  | run: pip install ...
+#   script (flake8 + black)              | run: flake8 / black --check
+#   script (pytest with retry)           | run: pytest with retry loop
+#   PublishTestResults@2                  | dorny/test-reporter@v1
+#   script (setup.py sdist bdist_wheel)  | run: python setup.py sdist bdist_wheel
+#   PublishBuildArtifacts@1              | actions/upload-artifact@v4
+#   script (publish_artifact.py)         | run: python publish_artifact.py (with env)
+#   script (preprod stamp)               | run: echo stamp
+#   script (mkdir test results)          | run: mkdir -p ...
+#   script (pytest from run-tests.yml)   | run: pytest (second run)
+#   PublishTestResults@2 (run-tests)     | dorny/test-reporter@v1 (second)
+#   script (normalize_test_results.py)   | run: python normalize_test_results.py
+#   download: current                    | actions/download-artifact@v4
+#   script (deploy echo)                 | run: echo deploy
+#   script (notify_release_orchestrator) | run: python notify_release_orchestrator.py
+#   script (generate_attestation.py)     | run: python generate_attestation.py
+#
+# -----------------------------------------------------------------------------
+# ADO Variable -> GitHub Actions Variable Mapping
+# -----------------------------------------------------------------------------
+#
+#   ADO Variable                            | GH Actions Equivalent
+#   ----------------------------------------|--------------------------------------
+#   $(Build.ArtifactStagingDirectory)       | ${{ runner.temp }}/staging
+#   $(Build.SourcesDirectory)               | ${{ github.workspace }}
+#   $(Build.BuildId)                        | ${{ github.run_id }}
+#   $(Build.SourceBranch)                   | ${{ github.ref }}
+#   $(Build.BuildNumber)                    | ${{ github.run_number }}
+#   $(Build.SourceVersion)                  | ${{ github.sha }}
+#   $(system.defaultWorkingDirectory)       | ${{ github.workspace }}
+#   variables.artifactName                  | env.ARTIFACT_NAME
+#   variables.templates_branch              | (not needed — templates expanded inline)
+#
+# =============================================================================
+
+name: risk-batch CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'services/risk-batch/**'
+
+  # Added: PR trigger for CI validation (standard GH Actions practice)
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'services/risk-batch/**'
+
+  workflow_dispatch:
+
+env:
+  ARTIFACT_NAME: risk-batch-dist
+
+jobs:
+  # ===========================================================================
+  # Job: build
+  # Mapped from: ADO Stage "Build" (displayName: "Build risk-batch")
+  # Sources:
+  #   - templates/build/build-python.yml@templates (staging/preprod)
+  #   - templates/test/run-tests.yml@templates (staging/preprod)
+  # ===========================================================================
+  build:
+    name: Build risk-batch
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create staging directory
+        run: mkdir -p "${{ runner.temp }}/staging"
+
+      # -----------------------------------------------------------------------
+      # From: templates/build/build-python.yml (staging/preprod)
+      # Params: pythonVersion=3.11, requirementsFile=services/risk-batch/requirements.txt,
+      #         artifactName=risk-batch-dist
+      # Defaults applied: runTests=true, enableLinting=true, publishArtifacts=true,
+      #                   testRetryCount=3, testFramework=pytest
+      # -----------------------------------------------------------------------
+
+      # Step 1: UsePythonVersion@0 -> actions/setup-python@v5
+      - name: Use Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # Step 2: Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r services/risk-batch/requirements.txt
+
+      # Step 3: Run linting checks (enableLinting=true)
+      - name: Run linting checks
+        run: |
+          pip install flake8 black mypy
+          flake8 src/ --max-line-length=120
+          black --check src/
+
+      # Step 4: Run tests with coverage (retry-enabled) (runTests=true)
+      # NOTE: staging/preprod retry logic preserved — testRetryCount=3,
+      #       pytest-rerunfailures --reruns 2 --reruns-delay 5
+      - name: Run tests with coverage (retry-enabled)
+        run: |
+          pip install pytest pytest-cov pytest-junitxml pytest-rerunfailures
+          RETRY=0
+          MAX_RETRY=3
+          until pytest tests/ \
+            --junitxml=${{ runner.temp }}/staging/test-results.xml \
+            --cov=src/ \
+            --cov-report=xml:${{ runner.temp }}/staging/coverage.xml \
+            --reruns 2 --reruns-delay 5; do
+            RETRY=$((RETRY + 1))
+            if [ $RETRY -ge $MAX_RETRY ]; then
+              echo "Tests failed after $MAX_RETRY retries"
+              exit 1
+            fi
+            echo "Test retry $RETRY of $MAX_RETRY..."
+            sleep 10
+          done
+
+      # Step 5: PublishTestResults@2 -> dorny/test-reporter@v1
+      - name: Publish test results (build)
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Build Test Results
+          path: ${{ runner.temp }}/staging/test-results.xml
+          reporter: java-junit
+
+      # Step 6: Build distribution (publishArtifacts=true)
+      - name: Build distribution
+        run: |
+          python setup.py sdist bdist_wheel
+          cp -r dist/ ${{ runner.temp }}/staging/dist/
+
+      # Step 7: PublishBuildArtifacts@1 -> actions/upload-artifact@v4
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ runner.temp }}/staging
+
+      # Step 8: Register artifact in artifact-registry
+      - name: Register artifact in artifact-registry
+        run: |
+          python ${{ github.workspace }}/build-tools/scripts/publish_artifact.py \
+            --name ${{ env.ARTIFACT_NAME }} \
+            --registry artifact-registry \
+            --build-id ${{ github.run_id }}
+        env:
+          BUILD_SOURCEBRANCH: ${{ github.ref }}
+          BUILD_SOURCEVERSION: ${{ github.sha }}
+          AGENT_NAME: github-actions
+          BUILD_ARTIFACTSTAGINGDIRECTORY: ${{ runner.temp }}/staging
+
+      # Step 9: Stamp preprod validation marker (staging/preprod addition)
+      - name: Stamp preprod validation marker
+        run: |
+          echo "Preprod artifact validation stamp"
+          echo "${{ github.run_id }}" > ${{ runner.temp }}/staging/preprod-stamp.txt
+
+      # -----------------------------------------------------------------------
+      # From: templates/test/run-tests.yml (staging/preprod)
+      # Params: testFramework=pytest
+      # Defaults applied: publishResults=true, failOnTestFailure=true
+      # NOTE: This template runs pytest a SECOND time (without retry/coverage).
+      #       The ADO pipeline invokes both build-python.yml (with retry+coverage)
+      #       and run-tests.yml (plain pytest). Preserved for behavioral parity.
+      # -----------------------------------------------------------------------
+
+      # Step 10: Create test results directory
+      - name: Create test results directory
+        run: mkdir -p ${{ runner.temp }}/staging/test-results
+
+      # Step 11: Run pytest (from run-tests.yml, testFramework=pytest)
+      - name: Run pytest (run-tests template)
+        run: |
+          pytest tests/ \
+            --junitxml=${{ runner.temp }}/staging/test-results/results.xml \
+            --tb=short
+
+      # Step 12: PublishTestResults@2 -> dorny/test-reporter@v1
+      - name: Publish test results (run-tests)
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Run-Tests Results
+          path: "${{ runner.temp }}/staging/test-results/**/*.xml"
+          reporter: java-junit
+          fail-on-error: true
+
+      # Step 13: Normalize test results
+      - name: Normalize test results
+        if: always()
+        run: |
+          python ${{ github.workspace }}/build-tools/scripts/normalize_test_results.py \
+            --input-dir ${{ runner.temp }}/staging/test-results \
+            --output ${{ runner.temp }}/staging/normalized-results.json
+
+  # ===========================================================================
+  # Job: release-dev
+  # Mapped from: ADO Stage "Release" (displayName: "Deploy to dev")
+  #   dependsOn: Build -> needs: build
+  # Source: templates/release/release-standard.yml@templates (staging/preprod)
+  # Params: environment=dev, artifactName=risk-batch-dist
+  # Defaults applied: deployStrategy=rolling, requireApproval=false,
+  #                   notifyReleaseOrchestrator=true
+  # ===========================================================================
+  release-dev:
+    name: Deploy to dev
+    runs-on: ubuntu-latest
+    needs: build
+    environment: dev
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Create staging directory
+        run: mkdir -p "${{ runner.temp }}/staging"
+
+      # Step 14: download: current -> actions/download-artifact@v4
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ runner.temp }}/staging
+
+      # Step 15: Execute deployment
+      - name: Execute deployment
+        run: |
+          echo "Deploying ${{ env.ARTIFACT_NAME }} to dev"
+          echo "Strategy: rolling"
+
+      # Step 16: Notify release-orchestrator (notifyReleaseOrchestrator=true)
+      - name: Notify release-orchestrator
+        run: |
+          python ${{ github.workspace }}/build-tools/scripts/notify_release_orchestrator.py \
+            --service ${{ env.ARTIFACT_NAME }} \
+            --env dev \
+            --build-id ${{ github.run_id }} \
+            --status success
+        env:
+          PIPELINE_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BUILD_REQUESTEDFOR: ${{ github.actor }}
+
+      # Step 17: Generate compliance attestation
+      - name: Generate compliance attestation
+        run: |
+          python ${{ github.workspace }}/build-tools/scripts/generate_attestation.py \
+            --artifact ${{ env.ARTIFACT_NAME }} \
+            --env dev \
+            --build-id ${{ github.run_id }}
+        env:
+          BUILD_SOURCEBRANCH: ${{ github.ref }}
+          BUILD_SOURCEVERSION: ${{ github.sha }}
+          BUILD_DEFINITIONNAME: risk-batch CI
+          AGENT_OS: Linux
+          BUILD_ARTIFACTSTAGINGDIRECTORY: ${{ runner.temp }}/staging
