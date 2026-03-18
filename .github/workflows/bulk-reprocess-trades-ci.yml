@@ -1,0 +1,104 @@
+# ============================================================================
+# Bulk Reprocess Trades — GitHub Actions Workflow
+# ============================================================================
+#
+# Migrated from: adhoc/bulk-reprocess-trades.yml
+# Stack: Python 3.11
+# Template source: NONE — fully inline (custom/inline pipeline)
+# Original trigger: trigger: none (manual only)
+# Pool: vmImage ubuntu-latest (hosted)
+# Purpose: Ad-hoc operational pipeline for bulk trade reprocessing after
+#          corrections. Triggered manually with date range and trade type
+#          parameters.
+#
+# ──────────────────────────────────────────────────────────────────────────────
+# ADO-to-GitHub Actions Task Mapping
+# ──────────────────────────────────────────────────────────────────────────────
+#
+#   ADO Task / Construct              GitHub Actions Equivalent
+#   ─────────────────────────────     ─────────────────────────────────────
+#   UsePythonVersion@0             →  actions/setup-python@v5
+#   script (pip install)           →  run (pip install)
+#   script (reprocess_trades.py)   →  run (reprocess_trades.py)
+#   PublishBuildArtifacts@1        →  actions/upload-artifact@v4
+#   parameters (startDate, etc.)   →  workflow_dispatch.inputs
+#   trigger: none                  →  on: workflow_dispatch (manual only)
+#   timeoutInMinutes: 480 (job)    →  timeout-minutes: 480
+#   timeoutInMinutes: 420 (step)   →  timeout-minutes: 420
+#
+# ──────────────────────────────────────────────────────────────────────────────
+# ADO Variable → GitHub Actions Variable Mapping
+# ──────────────────────────────────────────────────────────────────────────────
+#
+#   ADO Variable                         GitHub Actions Equivalent
+#   ───────────────────────────────────  ──────────────────────────────────
+#   $(Build.ArtifactStagingDirectory) →  ${{ runner.temp }}/staging
+#   $(Build.SourcesDirectory)         →  ${{ github.workspace }}
+#   $(Build.BuildId)                  →  ${{ github.run_id }}
+#   $(Build.SourceBranch)             →  ${{ github.ref }}
+#   $(Build.BuildNumber)              →  ${{ github.run_number }}
+#   ${{ parameters.startDate }}       →  ${{ inputs.startDate }}
+#   ${{ parameters.endDate }}         →  ${{ inputs.endDate }}
+#   ${{ parameters.tradeTypes }}      →  ${{ inputs.tradeTypes }}
+#
+# ============================================================================
+
+name: Bulk Reprocess Trades
+
+on:
+  workflow_dispatch:
+    inputs:
+      startDate:
+        description: "Start date for trade reprocessing (YYYY-MM-DD)"
+        required: true
+        type: string
+        default: "2024-01-01"
+      endDate:
+        description: "End date for trade reprocessing (YYYY-MM-DD)"
+        required: true
+        type: string
+        default: "2024-01-31"
+      tradeTypes:
+        description: "Trade types to reprocess (comma-separated, or 'all')"
+        required: true
+        type: string
+        default: "all"
+
+jobs:
+  reprocess-trades:
+    name: Bulk reprocess trades
+    runs-on: ubuntu-latest
+    timeout-minutes: 480
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install pandas requests pyarrow
+
+      - name: Create staging directory
+        run: mkdir -p "${{ runner.temp }}/staging/reprocessed"
+
+      - name: Reprocess trades
+        timeout-minutes: 420
+        run: |
+          echo "Reprocessing trades from ${{ inputs.startDate }} to ${{ inputs.endDate }}"
+          echo "Trade types: ${{ inputs.tradeTypes }}"
+          python adhoc/scripts/reprocess_trades.py \
+            --start-date ${{ inputs.startDate }} \
+            --end-date ${{ inputs.endDate }} \
+            --types ${{ inputs.tradeTypes }} \
+            --output "${{ runner.temp }}/staging/reprocessed/"
+
+      - name: Archive reprocessed data
+        uses: actions/upload-artifact@v4
+        with:
+          name: reprocessed-trades
+          path: ${{ runner.temp }}/staging
