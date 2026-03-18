@@ -152,24 +152,22 @@ ADO Template Step                          GH Actions Step
    explicit result output (needed since GH
    doesn't have ADO's auto test publishing).
 
-6. DotNetCoreCLI@2 (publish)              6. dotnet publish
-   [publishArtifacts=true, so included]       services/pricing-engine/**/*.sln
-   inputs:                                    --configuration Release
-     command: publish                         --output $RUNNER_TEMP/staging
-     publishWebProjects: true
+6. DotNetCoreCLI@2 (publish)              6. for proj in **/*.csproj;
+   [publishArtifacts=true, so included]       grep 'Microsoft.NET.Sdk.Web';
+   inputs:                                    dotnet publish "$proj"
+     command: publish                           --configuration Release
+     publishWebProjects: true                   --output $RUNNER_TEMP/staging
      arguments:
        --configuration Release
        --output $(Build.ArtifactStagingDir)
    ----------------------------------------   ----------------------------------------
    VERDICT: EQUIVALENT
-   Same configuration. Output directory
-   mapped: $(Build.ArtifactStagingDirectory)
-   -> ${{ runner.temp }}/staging.
-   Note: ADO has publishWebProjects: true
-   which auto-discovers web projects. The
-   GH version uses the explicit solution
-   glob instead (functionally equivalent
-   for this project).
+   ADO's publishWebProjects: true only
+   publishes projects using the Web SDK.
+   GH version replicates this by scanning
+   .csproj files for Microsoft.NET.Sdk.Web
+   and publishing only those. Same config,
+   same output directory mapping.
 
 7. PublishBuildArtifacts@1                 7. actions/upload-artifact@v4
    inputs:                                    with:
@@ -397,12 +395,14 @@ independent and don't share state.
 | 3 | Test job runs tests explicitly | GH Actions jobs are isolated; can't rely on build job state |
 | 4 | `PIPELINE_URL` env var (new) | Produces correct GH Actions URL instead of broken ADO URL |
 | 5 | `$(Build.BuildId)` -> `github.run_id` | Different ID systems; both are unique per-run identifiers |
+| 6 | `shopt -s globstar` added to all run steps | GH Actions bash doesn't enable globstar by default; ADO tasks use minimatch |
+| 7 | Web project filtering via grep | Replicates ADO's `publishWebProjects: true` without the DotNetCoreCLI task |
 
 ## Open Items for Runtime Validation
 
 These cannot be verified structurally and require running both pipelines:
 
-- [ ] Glob patterns (`**/*.sln`, `**/*Tests/*.csproj`) resolve identically
+- [ ] Glob patterns resolve identically (`shopt -s globstar` is set)
 - [ ] Published artifact contents match (file count, sizes, checksums)
 - [ ] Test result counts match (pass/fail/skip)
 - [ ] Compliance attestation JSON schema matches

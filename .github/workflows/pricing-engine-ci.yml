@@ -79,11 +79,14 @@ jobs:
       # The dotnet CLI includes built-in NuGet support, so no separate NuGet
       # installer is needed. `dotnet restore` replaces both ADO tasks.
       - name: Restore NuGet packages
-        run: dotnet restore services/pricing-engine/**/*.sln
+        run: |
+          shopt -s globstar
+          dotnet restore services/pricing-engine/**/*.sln
 
       # --- Build solution (maps to DotNetCoreCLI@2 command=build) ---
       - name: Build solution
         run: |
+          shopt -s globstar
           dotnet build services/pricing-engine/**/*.sln \
             --configuration ${{ env.BUILD_CONFIGURATION }} \
             --no-restore
@@ -91,18 +94,27 @@ jobs:
       # --- Run unit tests (maps to DotNetCoreCLI@2 command=test from build-dotnet.yml) ---
       - name: Run unit tests
         run: |
+          shopt -s globstar
           dotnet test services/pricing-engine/**/*Tests/*.csproj \
             --configuration ${{ env.BUILD_CONFIGURATION }} \
             --collect:"XPlat Code Coverage" \
             --results-directory ${{ runner.temp }}/test-results \
             --logger "trx;LogFileName=results.trx"
 
-      # --- Publish artifacts (maps to DotNetCoreCLI@2 command=publish) ---
-      - name: Publish application
+      # --- Publish web projects (maps to DotNetCoreCLI@2 publishWebProjects=true) ---
+      # ADO's publishWebProjects: true only publishes projects using
+      # Microsoft.NET.Sdk.Web. We replicate this by finding web .csproj files.
+      - name: Publish web projects
         run: |
-          dotnet publish services/pricing-engine/**/*.sln \
-            --configuration ${{ env.BUILD_CONFIGURATION }} \
-            --output ${{ runner.temp }}/staging
+          shopt -s globstar
+          for proj in services/pricing-engine/**/*.csproj; do
+            if grep -q 'Microsoft.NET.Sdk.Web' "$proj" 2>/dev/null; then
+              echo "Publishing web project: $proj"
+              dotnet publish "$proj" \
+                --configuration ${{ env.BUILD_CONFIGURATION }} \
+                --output ${{ runner.temp }}/staging
+            fi
+          done
 
       # --- Upload build artifacts (maps to PublishBuildArtifacts@1) ---
       - name: Upload build artifacts
@@ -152,6 +164,7 @@ jobs:
       # --- Run tests and produce JUnit XML (generic framework) ---
       - name: Run tests
         run: |
+          shopt -s globstar
           dotnet test services/pricing-engine/**/*Tests/*.csproj \
             --configuration ${{ env.BUILD_CONFIGURATION }} \
             --logger "junit;LogFileName=${{ runner.temp }}/test-results/results.xml"
