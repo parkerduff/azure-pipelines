@@ -40,11 +40,11 @@ services/portfolio-api/                       .github/workflows/
   │  build-java.yml@templates    │            │  actions/checkout@v4          │
   │  (master branch)             │            │  actions/setup-java@v4        │
   │                              │            │    (temurin, JDK 17)          │
-  │  ┌─ JavaToolInstaller@0 ──┐ │            │  mvn package -B               │
+  │  ┌─ JavaToolInstaller@0 ──┐ │            │  mvn clean package -B         │
   │  │  JDK 17, x64           │ │ ────────── │    -DskipTests=false          │
   │  └────────────────────────┘ │            │  cp target/*.jar|*.war        │
   │  ┌─ Maven@4 ──────────────┐ │            │    → $RUNNER_TEMP/staging     │
-  │  │  goal: package          │ │ ────────── │  actions/upload-artifact@v4   │
+  │  │  goals: clean package   │ │ ────────── │  actions/upload-artifact@v4   │
   │  │  options: -B            │ │            │    name: portfolio-api-dist   │
   │  │    -DskipTests=false    │ │            │  publish_artifact.py          │
   │  │  publishJUnitResults:   │ │            │    --registry Artifactory     │
@@ -105,7 +105,7 @@ services/portfolio-api/                       .github/workflows/
 
 Source: `templates/build/build-java.yml` with parameters:
 - `jdkVersion: '17'`
-- `mavenGoal: 'package'` (maps to `mavenGoals` in current template)
+- `mavenGoal: 'package'` — parameter name mismatch (`mavenGoal` vs `mavenGoals`), so ADO uses the template default `'clean package'`
 - `mavenOptions: '-B -DskipTests=false'` (default)
 - `runTests: true` (default)
 - `publishArtifacts: true` (default)
@@ -133,22 +133,25 @@ ADO Template Step                          GH Actions Step
    uses Temurin (Adoptium) distribution as
    the standard open-source JDK provider.
 
-3. Maven@4                                 3. mvn package -B -DskipTests=false
-   inputs:                                    -f pom.xml
+3. Maven@4                                 3. mvn clean package -B
+   inputs:                                       -DskipTests=false -f pom.xml
      mavenPomFile: pom.xml
-     goals: package
+     goals: clean package (default;
+       pipeline passes mavenGoal but
+       template param is mavenGoals,
+       so the default is used)
      options: -B -DskipTests=false
      publishJUnitResults: true
      testResultsFiles:
        **/surefire-reports/TEST-*.xml
    ----------------------------------------   ----------------------------------------
    VERDICT: EQUIVALENT
-   Same goal (package), same options (-B,
-   -DskipTests=false), same POM file. Both
-   run tests as part of the Maven lifecycle.
-   Note: ADO's publishJUnitResults auto-
-   publishes test results; GH Actions does
-   not have this built-in (see Known
+   Same goals (clean package), same options
+   (-B, -DskipTests=false), same POM file.
+   Both run tests as part of the Maven
+   lifecycle. Note: ADO's publishJUnitResults
+   auto-publishes test results; GH Actions
+   does not have this built-in (see Known
    Differences section).
 
 4. cp target/*.jar|*.war to staging        4. cp target/*.jar|*.war to staging
@@ -244,10 +247,11 @@ ADO Template Step                          GH Actions Step
      BUILD_REQUESTEDFOR)
    ----------------------------------------   ----------------------------------------
    VERDICT: EQUIVALENT + IMPROVED
-   Same script, same CLI args. Pipeline URL
-   is now correct (GH Actions URL) via the
-   PIPELINE_URL env var override instead of
-   the broken ADO-format URL concatenation.
+   Same script, same CLI args. Script updated
+   to check PIPELINE_URL env var first, falling
+   back to ADO vars (backward-compatible).
+   GH Actions passes the correct run URL via
+   PIPELINE_URL.
 
 4. generate_attestation.py                 4. generate_attestation.py
    --artifact portfolio-api-dist              --artifact portfolio-api-dist
@@ -330,7 +334,7 @@ ADO Template Step                          GH Actions Step
 |---|-----------|--------|
 | 1 | `pull_request` trigger added | Enables CI validation on PRs (standard GH Actions practice) |
 | 2 | `master` branch kept in push triggers | Matches ADO pipeline; both `main` and `master` are triggered |
-| 3 | `PIPELINE_URL` env var used | Provides correct GH Actions run URL instead of broken ADO-format URL concatenation |
+| 3 | `PIPELINE_URL` env var + script update | Script updated to check `PIPELINE_URL` first (backward-compatible); GH Actions passes correct run URL |
 | 4 | `$(Build.BuildId)` → `github.run_id` | Different ID systems; both are unique per-run identifiers |
 | 5 | Explicit `actions/checkout` steps | ADO implicit checkout vs GH Actions explicit requirement |
 | 6 | Deploy restricted to `main` branch only | Prevents accidental deploy from `master` push; `master` is legacy |
@@ -354,10 +358,10 @@ ADO Template Step                          GH Actions Step
 
 | ADO Variable | GH Actions Equivalent | Script Usage |
 |---|---|---|
-| `SYSTEM_TEAMFOUNDATIONCOLLECTIONURI` | *(not mapped — see PIPELINE_URL)* | Constructs pipeline URL |
-| `SYSTEM_TEAMPROJECT` | *(not mapped — see PIPELINE_URL)* | Constructs pipeline URL |
+| `SYSTEM_TEAMFOUNDATIONCOLLECTIONURI` | *(not mapped — PIPELINE_URL used instead)* | Fallback for pipeline URL (ADO only) |
+| `SYSTEM_TEAMPROJECT` | *(not mapped — PIPELINE_URL used instead)* | Fallback for pipeline URL (ADO only) |
 | `BUILD_REQUESTEDFOR` | `${{ github.actor }}` | Records who triggered the build |
-| `PIPELINE_URL` (override) | `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}` | Direct URL to GH Actions run |
+| `PIPELINE_URL` (new, preferred) | `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}` | Direct URL to GH Actions run; script checks this first, falls back to ADO vars |
 
 ### generate_attestation.py
 

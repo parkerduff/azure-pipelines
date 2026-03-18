@@ -9,7 +9,7 @@
 #   -----------------------------------------------    -----------------------------------------------
 #   templates/build/build-java.yml@templates        -> Inline steps using actions/setup-java
 #     - JavaToolInstaller@0                         -> actions/setup-java@v4 (Temurin JDK 17)
-#     - Maven@4 (package)                           -> mvn package via shell
+#     - Maven@4 (clean package)                      -> mvn clean package via shell
 #     - cp target/*.jar|*.war to staging            -> cp to $RUNNER_TEMP/staging
 #     - PublishBuildArtifacts@1                      -> actions/upload-artifact@v4
 #     - publish_artifact.py                         -> build-tools/scripts/publish_artifact.py
@@ -46,7 +46,7 @@ on:
 env:
   ARTIFACT_NAME: portfolio-api-dist
   JDK_VERSION: '17'
-  MAVEN_GOAL: 'package'
+  MAVEN_GOAL: 'clean package'
   MAVEN_OPTIONS: '-B -DskipTests=false'
 
 jobs:
@@ -69,7 +69,7 @@ jobs:
           distribution: temurin
           java-version: ${{ env.JDK_VERSION }}
 
-      # --- Maven build + test (maps to Maven@4 with goal 'package') ---
+      # --- Maven build + test (maps to Maven@4 with goals 'clean package') ---
       # Maven@4 in the ADO template runs goals with options '-B -DskipTests=false',
       # and publishJUnitResults: true (runTests=true). Maven 'package' phase
       # compiles, runs tests (surefire), and packages the artifact.
