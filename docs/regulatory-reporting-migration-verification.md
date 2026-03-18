@@ -46,8 +46,9 @@ schedules: 0 6 * * 1-5                               workflow_dispatch
 │  2. pip install (requirements.txt)  │  ──────►  │  setup-python@v5 (3.11)            │
 │  3. generate_reports.py             │           │  Create staging directory           │
 │  4. generate_metadata.py            │           │  pip install (requirements.txt)    │
-│     (regulatory-reports)            │           │  generate_reports.py               │
-│  5. generate_attestation.py         │           │  generate_metadata.py (env mapped) │
+│     (regulatory-reports)            │           │  Compute build number (date fmt)   │
+│  5. generate_attestation.py         │           │  generate_reports.py               │
+│                                     │           │  generate_metadata.py (env mapped) │
 │  6. PublishBuildArtifacts@1         │           │  generate_attestation.py (env map) │
 │                                     │           │  upload-artifact@v4                │
 │                                     │           │    (regulatory-reports)            │
@@ -81,7 +82,8 @@ Parameters: `language=python`, `complianceLevel=elevated`, `artifactName=regulat
 | 1 | `UsePythonVersion@0` (3.11)                    | `actions/setup-python@v5` (3.11)             | MATCH    | |
 | — | *(ADO staging dir exists by default)*           | `Create staging directory` (mkdir -p)        | ADDED    | GH Actions needs explicit dir creation |
 | 2 | `pip install -r .../requirements.txt`          | `Install dependencies`                       | MATCH    | |
-| 3 | `generate_reports.py` (--output-dir, etc.)     | `Generate regulatory reports`                | MATCH    | ADO vars substituted with GH equivalents |
+| — | *(ADO Build.BuildNumber is date-formatted)*     | `Compute build number` (date+run_number)     | ADDED    | Produces `YYYYMMDD.<run_number>` to match ADO `$(Date:yyyyMMdd).$(Rev:r)` format |
+| 3 | `generate_reports.py` (--output-dir, etc.)     | `Generate regulatory reports`                | MATCH    | `--date` uses computed build number |
 | 4 | `generate_metadata.py` (regulatory-reports)    | `Upload compliance metadata` (env mapped)    | MATCH    | |
 | 5 | `generate_attestation.py` (prod attestation)   | `Generate attestation record` (env mapped)   | MATCH    | |
 | 6 | `PublishBuildArtifacts@1`                       | `actions/upload-artifact@v4`                 | MATCH    | |
@@ -95,8 +97,8 @@ Parameters: `language=python`, `complianceLevel=elevated`, `artifactName=regulat
 | **Total ADO steps**        | 11    |
 | **Matched steps**          | 11    |
 | **Removed steps**          | 0     |
-| **Added steps**            | 4     |
-| **Total GH Actions steps** | 15    |
+| **Added steps**            | 5     |
+| **Total GH Actions steps** | 16    |
 
 ### Added Steps (with justification)
 
@@ -104,6 +106,7 @@ Parameters: `language=python`, `complianceLevel=elevated`, `artifactName=regulat
 |-----------------------------|------------------------------------------------------------------------|
 | `actions/checkout@v4` (x2)  | GH Actions requires explicit checkout; ADO does it implicitly          |
 | `Create staging directory` (x2) | ADO provides `Build.ArtifactStagingDirectory` pre-created; GH does not |
+| `Compute build number`      | ADO `Build.BuildNumber` is date-formatted (`YYYYMMDD.N`); GH `run_number` is a bare integer. Step computes equivalent format. |
 
 ### Removed Steps
 
@@ -155,6 +158,7 @@ None. All ADO steps have a 1:1 equivalent.
 3. **Explicit `actions/checkout@v4`** — ADO implicitly checks out code; GH Actions requires an explicit step.
 4. **Explicit staging directory creation** — ADO provides `Build.ArtifactStagingDirectory` as a pre-existing path; GH Actions requires manual directory creation.
 5. **Template expansion** — ADO `team-build-custom.yml` template reference is expanded inline in GH Actions since reusable workflows have different semantics. All template logic is preserved.
+6. **Date-formatted build number** — ADO `Build.BuildNumber` defaults to `$(Date:yyyyMMdd).$(Rev:r)` (e.g., `20230915.1`). GH Actions `github.run_number` is a bare integer. A `Compute build number` step produces `YYYYMMDD.<run_number>` to preserve the date semantics expected by `generate_reports.py --date`.
 
 ---
 

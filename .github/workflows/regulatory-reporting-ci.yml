@@ -37,7 +37,7 @@
 #   $(Build.SourcesDirectory)             →  ${{ github.workspace }}
 #   $(Build.BuildId)                      →  ${{ github.run_id }}
 #   $(Build.SourceBranch)                 →  ${{ github.ref }}
-#   $(Build.BuildNumber)                  →  ${{ github.run_number }}
+#   $(Build.BuildNumber)                  →  $(date -u +%Y%m%d).${{ github.run_number }}
 #   $(Build.SourceVersion)                →  ${{ github.sha }}
 #   $(system.defaultWorkingDirectory)     →  ${{ github.workspace }}
 #
@@ -172,13 +172,19 @@ jobs:
         run: |
           pip install -r services/regulatory-reporting/requirements.txt
 
+      # --- Compute date-formatted build number to match ADO's Build.BuildNumber ---
+      # ADO format: $(Date:yyyyMMdd).$(Rev:r) e.g. "20230915.1"
+      - name: Compute build number
+        id: buildnum
+        run: echo "build_number=$(date -u +%Y%m%d).${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
       # --- Mapped from: generate_reports.py invocation (inline) ---
       - name: Generate regulatory reports
         run: |
           python services/regulatory-reporting/src/generate_reports.py \
             --output-dir ${{ runner.temp }}/staging/reports \
             --compliance-level ${{ env.complianceLevel }} \
-            --date ${{ github.run_number }}
+            --date ${{ steps.buildnum.outputs.build_number }}
 
       # --- Mapped from: generate_metadata.py invocation (inline) ---
       - name: Upload compliance metadata
