@@ -1,0 +1,142 @@
+# =============================================================================
+# ops-control-plane CI — GitHub Actions Workflow
+# =============================================================================
+#
+# Migrated from: services/ops-control-plane/azure-pipelines.yml
+# Stack: Go 1.22
+# Template source: CUSTOM (inline YAML — no shared templates)
+# Owner: platform-team
+# Pool: vmImage ubuntu-latest (hosted) → runs-on: ubuntu-latest
+#
+# -----------------------------------------------------------------------------
+# ADO Task → GitHub Actions Mapping
+# -----------------------------------------------------------------------------
+#
+#   ADO Task / Step                        GitHub Actions Equivalent
+#   ─────────────────────────────────────  ─────────────────────────────────────
+#   GoTool@0 (version: 1.22)            → actions/setup-go@v5 (go-version: '1.22')
+#   script: go mod download / verify    → run: go mod download / go mod verify
+#   script: go vet ./...                → run: go vet ./...
+#   script: go test ./... -v            → run: go test ./... -v -coverprofile=coverage.out
+#   script: go build -ldflags ...       → run: CGO_ENABLED=0 ... go build ...
+#   PublishBuildArtifacts@1             → actions/upload-artifact@v4
+#
+# -----------------------------------------------------------------------------
+# Variable Syntax Mapping (ADO → GitHub Actions)
+# -----------------------------------------------------------------------------
+#
+#   ADO Variable                          GitHub Actions Equivalent
+#   ─────────────────────────────────────  ─────────────────────────────────────
+#   $(system.defaultWorkingDirectory)   → ${{ github.workspace }}
+#   $(Build.ArtifactStagingDirectory)   → ${{ runner.temp }}/staging
+#   $(Build.SourceBranch)               → ${{ github.ref }}
+#   $(Build.BuildId)                    → ${{ github.run_id }}
+#   $(Build.BuildNumber)                → ${{ github.run_number }}
+#
+# -----------------------------------------------------------------------------
+# Trigger Mapping
+# -----------------------------------------------------------------------------
+#
+#   ADO                                    GitHub Actions
+#   ─────────────────────────────────────  ─────────────────────────────────────
+#   trigger.branches.include: [main]    → on.push.branches: [main]
+#   trigger.paths.include:              → on.push.paths:
+#     [services/ops-control-plane/**]       ['services/ops-control-plane/**']
+#   (no PR trigger in ADO)              → on.pull_request added (standard practice)
+#
+# -----------------------------------------------------------------------------
+# Stage → Job Mapping
+# -----------------------------------------------------------------------------
+#
+#   ADO Stage / Job                        GitHub Actions Job
+#   ─────────────────────────────────────  ─────────────────────────────────────
+#   stage: Build / job: build_go        → job: build
+#
+# =============================================================================
+
+name: ops-control-plane CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'services/ops-control-plane/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'services/ops-control-plane/**'
+
+env:
+  GOPATH: ${{ github.workspace }}/go
+  GOBIN: ${{ github.workspace }}/go/bin
+  MODULE_PATH: services/ops-control-plane
+
+jobs:
+  build:
+    name: 'Go build and test'
+    runs-on: ubuntu-latest
+
+    steps:
+      # -----------------------------------------------------------------------
+      # Checkout
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # ADO: GoTool@0 (version: 1.22) → actions/setup-go@v5
+      # -----------------------------------------------------------------------
+      - name: Install Go 1.22
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      # -----------------------------------------------------------------------
+      # ADO: script — go mod download / go mod verify
+      # -----------------------------------------------------------------------
+      - name: Download modules
+        working-directory: ${{ env.MODULE_PATH }}
+        run: |
+          go mod download
+          go mod verify
+
+      # -----------------------------------------------------------------------
+      # ADO: script — go vet ./...
+      # -----------------------------------------------------------------------
+      - name: Vet
+        working-directory: ${{ env.MODULE_PATH }}
+        run: go vet ./...
+
+      # -----------------------------------------------------------------------
+      # ADO: script — go test ./... -v -coverprofile=coverage.out
+      # -----------------------------------------------------------------------
+      - name: Run tests
+        working-directory: ${{ env.MODULE_PATH }}
+        run: |
+          go test ./... -v -coverprofile=coverage.out
+
+      # -----------------------------------------------------------------------
+      # Create staging directory for artifact (replaces ADO staging dir)
+      # -----------------------------------------------------------------------
+      - name: Create staging directory
+        run: mkdir -p "${{ runner.temp }}/staging"
+
+      # -----------------------------------------------------------------------
+      # ADO: script — CGO_ENABLED=0 go build -ldflags="-s -w" ...
+      # -----------------------------------------------------------------------
+      - name: Build binary
+        working-directory: ${{ env.MODULE_PATH }}
+        run: |
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+            go build -ldflags="-s -w" -o "${{ runner.temp }}/staging/ops-control-plane" ./cmd/server
+
+      # -----------------------------------------------------------------------
+      # ADO: PublishBuildArtifacts@1 → actions/upload-artifact@v4
+      # -----------------------------------------------------------------------
+      - name: Publish binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ops-control-plane-binary
+          path: ${{ runner.temp }}/staging/
