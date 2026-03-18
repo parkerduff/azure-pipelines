@@ -1,0 +1,218 @@
+# =============================================================================
+# regulatory-reporting CI workflow
+# =============================================================================
+#
+# Migrated from: services/regulatory-reporting/azure-pipelines.yml
+# Stack: Python 3.11
+# Template source: HYBRID — team-overrides + central templates
+# Template branch: team/reporting-hotfix
+# Owner: team-reporting
+#
+# Classification: Compliance/reporting workflow (NOT a deployable artifact).
+# Generates regulatory reports, validates compliance metadata, and uploads
+# attestation records to compliance-store.
+#
+# -----------------------------------------------------------------------------
+# ADO-to-GitHub Actions Task Mapping
+# -----------------------------------------------------------------------------
+#
+#   ADO Task / Template                      GitHub Actions Equivalent
+#   ──────────────────────────────────────   ─────────────────────────────────
+#   UsePythonVersion@0                    →  actions/setup-python@v5
+#   PublishBuildArtifacts@1               →  actions/upload-artifact@v4
+#   alt-templates/team-overrides/         →  Inline steps (template expanded)
+#     team-build-custom.yml@templates
+#   build-tools/compliance/               →  Same script, env vars mapped
+#     generate_metadata.py
+#   build-tools/scripts/                  →  Same script, env vars mapped
+#     generate_attestation.py
+#
+# -----------------------------------------------------------------------------
+# ADO Variable → GitHub Actions Variable Mapping
+# -----------------------------------------------------------------------------
+#
+#   ADO Variable                             GitHub Actions Equivalent
+#   ──────────────────────────────────────   ─────────────────────────────────
+#   $(Build.ArtifactStagingDirectory)     →  ${{ runner.temp }}/staging
+#   $(Build.SourcesDirectory)             →  ${{ github.workspace }}
+#   $(Build.BuildId)                      →  ${{ github.run_id }}
+#   $(Build.SourceBranch)                 →  ${{ github.ref }}
+#   $(Build.BuildNumber)                  →  ${{ github.run_number }}
+#   $(Build.SourceVersion)                →  ${{ github.sha }}
+#   $(system.defaultWorkingDirectory)     →  ${{ github.workspace }}
+#
+# -----------------------------------------------------------------------------
+# ADO Stage → GitHub Actions Job Mapping
+# -----------------------------------------------------------------------------
+#
+#   ADO Stage              GitHub Actions Job
+#   ────────────────────   ─────────────────────
+#   ComplianceBuild     →  compliance-build
+#   GenerateReports     →  generate-reports (needs: compliance-build)
+#
+# -----------------------------------------------------------------------------
+# Intentional Additions (not in ADO pipeline)
+# -----------------------------------------------------------------------------
+#   - on.pull_request trigger: standard GH Actions practice for CI validation
+#   - workflow_dispatch: allows manual triggering
+#   - Staging directory creation: GH Actions jobs are isolated, directories
+#     are not pre-created like ADO's Build.ArtifactStagingDirectory
+# =============================================================================
+
+name: regulatory-reporting CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'services/regulatory-reporting/**'
+
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'services/regulatory-reporting/**'
+
+  schedule:
+    # Weekday morning compliance run (Mon-Fri at 06:00 UTC)
+    - cron: '0 6 * * 1-5'
+
+  workflow_dispatch:
+
+env:
+  complianceLevel: 'elevated'
+
+jobs:
+  # ===========================================================================
+  # Job: compliance-build
+  # Mapped from: ADO stage "ComplianceBuild"
+  # Source: alt-templates/team-overrides/team-build-custom.yml (expanded)
+  # Parameters passed: language=python, complianceLevel=elevated,
+  #                    artifactName=regulatory-compliance-pkg,
+  #                    generateMetadata=true (default)
+  # ===========================================================================
+  compliance-build:
+    name: Build compliance package
+    runs-on: ubuntu-latest
+    steps:
+      # --- Expanded from team-build-custom.yml: Log compliance context ---
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log compliance context
+        run: |
+          echo "Build initiated with compliance level: ${{ env.complianceLevel }}"
+          echo "Language: python"
+
+      # --- Expanded from team-build-custom.yml: Python build branch ---
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Create staging directory
+        run: mkdir -p "${{ runner.temp }}/staging"
+
+      - name: Build and test (Python)
+        run: |
+          pip install -r requirements.txt
+          pytest tests/ -v
+          python setup.py sdist bdist_wheel
+
+      # --- Expanded from team-build-custom.yml: generateMetadata=true ---
+      - name: Generate compliance metadata
+        run: |
+          python ${{ github.workspace }}/build-tools/compliance/generate_metadata.py \
+            --artifact regulatory-compliance-pkg \
+            --compliance-level ${{ env.complianceLevel }} \
+            --build-id ${{ github.run_id }} \
+            --store compliance-store
+        env:
+          BUILD_DEFINITIONNAME: regulatory-reporting CI
+          BUILD_REPOSITORY_NAME: ${{ github.repository }}
+          BUILD_SOURCEBRANCH: ${{ github.ref }}
+          BUILD_SOURCEVERSION: ${{ github.sha }}
+          AGENT_NAME: github-actions
+          BUILD_ARTIFACTSTAGINGDIRECTORY: ${{ runner.temp }}/staging
+
+      # --- Expanded from team-build-custom.yml: PublishBuildArtifacts@1 ---
+      - name: Upload compliance build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: regulatory-compliance-pkg
+          path: ${{ runner.temp }}/staging
+
+  # ===========================================================================
+  # Job: generate-reports
+  # Mapped from: ADO stage "GenerateReports"
+  # dependsOn: ComplianceBuild → needs: compliance-build
+  # Timeout: 90 minutes (preserved from ADO)
+  # ===========================================================================
+  generate-reports:
+    name: Generate regulatory reports
+    runs-on: ubuntu-latest
+    needs: compliance-build
+    timeout-minutes: 90
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # --- Mapped from: UsePythonVersion@0 → actions/setup-python@v5 ---
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Create staging directory
+        run: mkdir -p "${{ runner.temp }}/staging/reports"
+
+      # --- Mapped from: pip install step (inline) ---
+      - name: Install dependencies
+        run: |
+          pip install -r services/regulatory-reporting/requirements.txt
+
+      # --- Mapped from: generate_reports.py invocation (inline) ---
+      - name: Generate regulatory reports
+        run: |
+          python services/regulatory-reporting/src/generate_reports.py \
+            --output-dir ${{ runner.temp }}/staging/reports \
+            --compliance-level ${{ env.complianceLevel }} \
+            --date ${{ github.run_number }}
+
+      # --- Mapped from: generate_metadata.py invocation (inline) ---
+      - name: Upload compliance metadata
+        run: |
+          python ${{ github.workspace }}/build-tools/compliance/generate_metadata.py \
+            --artifact regulatory-reports \
+            --compliance-level ${{ env.complianceLevel }} \
+            --build-id ${{ github.run_id }} \
+            --store compliance-store
+        env:
+          BUILD_DEFINITIONNAME: regulatory-reporting CI
+          BUILD_REPOSITORY_NAME: ${{ github.repository }}
+          BUILD_SOURCEBRANCH: ${{ github.ref }}
+          BUILD_SOURCEVERSION: ${{ github.sha }}
+          AGENT_NAME: github-actions
+          BUILD_ARTIFACTSTAGINGDIRECTORY: ${{ runner.temp }}/staging
+
+      # --- Mapped from: generate_attestation.py invocation (inline) ---
+      - name: Generate attestation record
+        run: |
+          python ${{ github.workspace }}/build-tools/scripts/generate_attestation.py \
+            --artifact regulatory-reports \
+            --env prod \
+            --build-id ${{ github.run_id }}
+        env:
+          BUILD_SOURCEBRANCH: ${{ github.ref }}
+          BUILD_SOURCEVERSION: ${{ github.sha }}
+          BUILD_DEFINITIONNAME: regulatory-reporting CI
+          AGENT_OS: Linux
+          BUILD_ARTIFACTSTAGINGDIRECTORY: ${{ runner.temp }}/staging
+
+      # --- Mapped from: PublishBuildArtifacts@1 → actions/upload-artifact@v4 ---
+      - name: Upload regulatory reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: regulatory-reports
+          path: ${{ runner.temp }}/staging/reports
