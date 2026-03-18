@@ -118,6 +118,11 @@ jobs:
             --name "${{ env.ARTIFACT_NAME }}" \
             --registry artifact-registry \
             --build-id "${{ github.run_id }}"
+        env:
+          BUILD_SOURCEBRANCH: ${{ github.ref }}
+          BUILD_SOURCEVERSION: ${{ github.sha }}
+          BUILD_ARTIFACTSTAGINGDIRECTORY: ${{ runner.temp }}/staging
+          AGENT_NAME: github-actions
 
   # --------------------------------------------------------------------------
   # Stage: Test (maps to ADO stage "Test" + templates/test/run-tests.yml)
@@ -212,6 +217,10 @@ jobs:
             --env dev \
             --build-id "${{ github.run_id }}" \
             --status success
+        env:
+          BUILD_REQUESTEDFOR: ${{ github.actor }}
+          SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: ${{ github.server_url }}/
+          SYSTEM_TEAMPROJECT: ${{ github.repository }}
 
       # --- Generate compliance attestation (maps to generate_attestation.py) ---
       - name: Generate compliance attestation
@@ -220,3 +229,9 @@ jobs:
             --artifact "${{ env.ARTIFACT_NAME }}" \
             --env dev \
             --build-id "${{ github.run_id }}"
+        env:
+          BUILD_SOURCEBRANCH: ${{ github.ref }}
+          BUILD_SOURCEVERSION: ${{ github.sha }}
+          BUILD_DEFINITIONNAME: pricing-engine CI
+          BUILD_ARTIFACTSTAGINGDIRECTORY: ${{ runner.temp }}/deploy
+          AGENT_OS: Linux
