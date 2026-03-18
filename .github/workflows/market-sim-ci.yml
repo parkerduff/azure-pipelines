@@ -1,0 +1,171 @@
+# =============================================================================
+# market-sim CI — GitHub Actions workflow
+# =============================================================================
+# Migrated from: services/market-sim/azure-pipelines.yml
+# Stack: Rust (stable toolchain)
+# Template source: CUSTOM (inline YAML — no shared templates)
+# Owner: team-quant (uncertain)
+# Pool: vmImage ubuntu-latest -> runs-on: ubuntu-latest
+#
+# ADO-to-GitHub Actions Mapping Table
+# ---------------------------------------------------------------------------
+# ADO Task / Construct               | GitHub Actions Equivalent
+# ------------------------------------|----------------------------------------
+# trigger.branches.include: [main]    | on.push.branches: [main]
+# trigger.paths.include: [svc/**]     | on.push.paths: ['services/market-sim/**']
+# (no PR trigger in ADO)              | on.pull_request (added for CI validation)
+# pool: vmImage 'ubuntu-latest'       | runs-on: ubuntu-latest
+# stage: Build                        | jobs: build
+# stage: Deploy (dependsOn: Build)    | jobs: deploy (needs: build)
+# condition: eq(SourceBranch, main)   | if: github.ref == 'refs/heads/main'
+#                                     |     && github.event_name == 'push'
+# script: curl rustup.rs              | dtolnay/rust-toolchain@stable
+# script: cargo fetch                 | run: cargo fetch
+# script: cargo clippy                | run: cargo clippy -- -D warnings
+# script: cargo build --release       | run: cargo build --release
+# script: cargo test                  | run: cargo test -- --test-threads=1
+# script: cp binary to staging dir    | run: mkdir + cp to staging dir
+# PublishBuildArtifacts@1             | actions/upload-artifact@v4
+# (deploy stage — echo placeholder)   | run: echo placeholder
+#
+# Variable Syntax Mapping
+# ---------------------------------------------------------------------------
+# ADO Variable                        | GitHub Actions Equivalent
+# ------------------------------------|----------------------------------------
+# $(Build.ArtifactStagingDirectory)   | ${{ runner.temp }}/staging
+# $(Build.SourceBranch)               | ${{ github.ref }}
+# $(Build.BuildId)                    | ${{ github.run_id }}
+# $(Build.BuildNumber)                | ${{ github.run_number }}
+# $(Build.SourcesDirectory)           | ${{ github.workspace }}
+#
+# Intentional Additions
+# ---------------------------------------------------------------------------
+# - on.pull_request trigger added for standard GH Actions CI validation
+# - dtolnay/rust-toolchain@stable replaces manual curl-based Rust install
+# - Rust dependency caching via Swatinem/rust-cache@v2 for faster builds
+# =============================================================================
+
+name: market-sim CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'services/market-sim/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'services/market-sim/**'
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # ===========================================================================
+  # Build stage — equivalent to ADO stage: Build
+  # ===========================================================================
+  build:
+    name: Build market-sim
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: services/market-sim
+    steps:
+      # -----------------------------------------------------------------------
+      # Checkout repository
+      # (implicit in ADO; explicit in GitHub Actions)
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # Install Rust (stable toolchain)
+      # ADO: script: curl rustup.rs | sh -s -- -y --default-toolchain stable
+      # GHA: dtolnay/rust-toolchain@stable
+      # -----------------------------------------------------------------------
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      # -----------------------------------------------------------------------
+      # Cache Rust dependencies
+      # (added — not in ADO; speeds up CI builds)
+      # -----------------------------------------------------------------------
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: services/market-sim
+
+      # -----------------------------------------------------------------------
+      # Fetch dependencies
+      # ADO: script: cargo fetch
+      # -----------------------------------------------------------------------
+      - name: Fetch dependencies
+        run: cargo fetch
+
+      # -----------------------------------------------------------------------
+      # Lint with clippy
+      # ADO: script: cargo clippy -- -D warnings
+      # -----------------------------------------------------------------------
+      - name: Lint with clippy
+        run: cargo clippy -- -D warnings
+
+      # -----------------------------------------------------------------------
+      # Build release binary
+      # ADO: script: cargo build --release
+      # -----------------------------------------------------------------------
+      - name: Build release binary
+        run: cargo build --release
+
+      # -----------------------------------------------------------------------
+      # Run tests
+      # ADO: script: cargo test -- --test-threads=1
+      # -----------------------------------------------------------------------
+      - name: Run tests
+        run: cargo test -- --test-threads=1
+
+      # -----------------------------------------------------------------------
+      # Stage binary
+      # ADO: script: cp target/release/market-sim $(Build.ArtifactStagingDirectory)/
+      # GHA: cp to ${{ runner.temp }}/staging
+      # -----------------------------------------------------------------------
+      - name: Stage binary
+        run: |
+          mkdir -p "${{ runner.temp }}/staging"
+          cp target/release/market-sim "${{ runner.temp }}/staging/"
+
+      # -----------------------------------------------------------------------
+      # Publish artifact
+      # ADO: PublishBuildArtifacts@1 -> artifactName: market-sim-binary
+      # GHA: actions/upload-artifact@v4
+      # -----------------------------------------------------------------------
+      - name: Publish market-sim binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: market-sim-binary
+          path: ${{ runner.temp }}/staging/market-sim
+
+  # ===========================================================================
+  # Deploy stage — equivalent to ADO stage: Deploy
+  # ADO condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  # GHA: needs: build + if: main branch push only
+  # ===========================================================================
+  deploy:
+    name: Deploy market-sim
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      # -----------------------------------------------------------------------
+      # Deploy to cluster (placeholder)
+      # ADO: script: echo "Deploying market-sim to compute cluster..."
+      # -----------------------------------------------------------------------
+      - name: Deploy to cluster
+        run: |
+          echo "Deploying market-sim to compute cluster..."
+          echo "This deployment is managed outside release-orchestrator"
