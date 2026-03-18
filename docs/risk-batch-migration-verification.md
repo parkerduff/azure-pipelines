@@ -63,9 +63,9 @@ Stage: Release                                 Job: release-dev
 | 6 | pytest with retry loop + coverage | build-python.yml | `run: pytest` with retry loop + coverage | MATCH | staging/preprod retry logic preserved: MAX_RETRY=3, --reruns 2, --reruns-delay 5 |
 | 7 | `PublishTestResults@2` (JUnit XML) | build-python.yml | `dorny/test-reporter@v1` | MATCH | `if: always()` preserved |
 | 8 | `setup.py sdist bdist_wheel` | build-python.yml | `run: setup.py sdist bdist_wheel` | MATCH | |
-| 9 | `PublishBuildArtifacts@1` | build-python.yml | `actions/upload-artifact@v4` | MATCH | |
-| 10 | `publish_artifact.py` | build-python.yml | `run: publish_artifact.py` | MATCH | env: BUILD_SOURCEBRANCH, BUILD_SOURCEVERSION, AGENT_NAME, BUILD_ARTIFACTSTAGINGDIRECTORY |
-| 11 | Stamp preprod validation marker | build-python.yml (staging/preprod) | `run: echo stamp` | MATCH | staging/preprod-specific step |
+| 9 | `publish_artifact.py` | build-python.yml | `run: publish_artifact.py` | MATCH | Moved before upload; env: BUILD_SOURCEBRANCH, BUILD_SOURCEVERSION, AGENT_NAME, BUILD_ARTIFACTSTAGINGDIRECTORY |
+| 10 | Stamp preprod validation marker | build-python.yml (staging/preprod) | `run: echo stamp` | MATCH | Moved before upload so stamp is included in artifact |
+| 11 | `PublishBuildArtifacts@1` | build-python.yml | `actions/upload-artifact@v4` | MATCH | Moved after stamp + registry so all files are captured |
 | 12 | `mkdir -p test-results` | run-tests.yml | `run: mkdir -p test-results` | MATCH | |
 | 13 | `pytest tests/ --junitxml --tb=short` | run-tests.yml | `run: pytest tests/ --junitxml --tb=short` | MATCH | Second pytest run (no retry/coverage) |
 | 14 | `PublishTestResults@2` (run-tests) | run-tests.yml | `dorny/test-reporter@v1` | MATCH | `if: always()` preserved, failOnTestFailure=true |
@@ -108,9 +108,11 @@ No ADO tasks were removed from this pipeline. All tasks present in the expanded 
 
 1. **PR trigger added**: `on.pull_request` added for standard CI validation. ADO pipeline only triggered on `push` to `main`.
 2. **`workflow_dispatch` added**: Enables manual runs from the GH Actions UI.
-3. **`PIPELINE_URL` env var**: `notify_release_orchestrator.py` updated to accept `PIPELINE_URL` override (backward-compatible with ADO). In GH Actions, this is set to the correct Actions run URL instead of constructing from `SYSTEM_TEAMFOUNDATIONCOLLECTIONURI`.
-4. **Duplicate test execution preserved**: The ADO pipeline runs pytest twice — once from `build-python.yml` (with retry + coverage) and once from `run-tests.yml` (plain). This duplication is preserved for behavioral parity but should be reviewed by the team for potential consolidation.
-5. **`dorny/test-reporter@v1`** used instead of `PublishTestResults@2` — third-party action; see review checklist.
+3. **`release-dev` job guarded with `if: github.event_name != 'pull_request'`**: Prevents deployment on PR builds. ADO pipeline only deployed on push to main.
+4. **Step reordering**: `publish_artifact.py` and preprod stamp moved before `upload-artifact` so their output files are included in the artifact. In ADO, `PublishBuildArtifacts@1` captures the staging directory at publish time, but these steps wrote to it afterward. The reordering ensures artifact content parity.
+5. **`PIPELINE_URL` env var**: `notify_release_orchestrator.py` updated to accept `PIPELINE_URL` override (backward-compatible with ADO). In GH Actions, this is set to the correct Actions run URL instead of constructing from `SYSTEM_TEAMFOUNDATIONCOLLECTIONURI`.
+6. **Duplicate test execution preserved**: The ADO pipeline runs pytest twice — once from `build-python.yml` (with retry + coverage) and once from `run-tests.yml` (plain). This duplication is preserved for behavioral parity but should be reviewed by the team for potential consolidation.
+7. **`dorny/test-reporter@v1`** used instead of `PublishTestResults@2` — third-party action; see review checklist.
 
 ## build-tools/ Script Env Var Mapping
 

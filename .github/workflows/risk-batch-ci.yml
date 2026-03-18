@@ -159,14 +159,8 @@ jobs:
           python setup.py sdist bdist_wheel
           cp -r dist/ ${{ runner.temp }}/staging/dist/
 
-      # Step 7: PublishBuildArtifacts@1 -> actions/upload-artifact@v4
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.ARTIFACT_NAME }}
-          path: ${{ runner.temp }}/staging
-
-      # Step 8: Register artifact in artifact-registry
+      # Step 7: Register artifact in artifact-registry
+      # NOTE: Moved before upload so the manifest is included in the artifact
       - name: Register artifact in artifact-registry
         run: |
           python ${{ github.workspace }}/build-tools/scripts/publish_artifact.py \
@@ -179,11 +173,19 @@ jobs:
           AGENT_NAME: github-actions
           BUILD_ARTIFACTSTAGINGDIRECTORY: ${{ runner.temp }}/staging
 
-      # Step 9: Stamp preprod validation marker (staging/preprod addition)
+      # Step 8: Stamp preprod validation marker (staging/preprod addition)
+      # NOTE: Moved before upload so the stamp is included in the artifact
       - name: Stamp preprod validation marker
         run: |
           echo "Preprod artifact validation stamp"
           echo "${{ github.run_id }}" > ${{ runner.temp }}/staging/preprod-stamp.txt
+
+      # Step 9: PublishBuildArtifacts@1 -> actions/upload-artifact@v4
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ runner.temp }}/staging
 
       # -----------------------------------------------------------------------
       # From: templates/test/run-tests.yml (staging/preprod)
@@ -236,6 +238,7 @@ jobs:
     name: Deploy to dev
     runs-on: ubuntu-latest
     needs: build
+    if: github.event_name != 'pull_request'
     environment: dev
 
     steps:
