@@ -219,8 +219,9 @@ jobs:
             --status success
         env:
           BUILD_REQUESTEDFOR: ${{ github.actor }}
-          SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: ${{ github.server_url }}/
-          SYSTEM_TEAMPROJECT: ${{ github.repository }}
+          PIPELINE_URL: >-
+            ${{ github.server_url }}/${{ github.repository
+            }}/actions/runs/${{ github.run_id }}
 
       # --- Generate compliance attestation (maps to generate_attestation.py) ---
       - name: Generate compliance attestation
