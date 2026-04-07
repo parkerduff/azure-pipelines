@@ -1,4 +1,4 @@
-# Shared CI Platform — Enterprise Pipeline Repository
+# Shared CI Platform — Enterprise Pipeline Repository 
 
 This repository contains the shared CI/CD platform configuration for the organization.
 It includes build templates, release workflows, helper scripts, and service pipeline
