@@ -4,7 +4,7 @@
 **Project:** shared-ci-platform  
 **API Data Date:** 2026-03-17  
 **Report Generated:** 2026-05-12  
-**Scope:** Full inventory of 18 ADO pipeline definitions, 9 variable groups, 5 service connections, 6 environments, 4 agent pools, and 8 long-lived branches.
+**Scope:** Full inventory of 18 ADO pipeline definitions, 10 variable groups, 5 service connections, 6 environments, 4 agent pools, and 8 long-lived branches.
 
 ---
 
@@ -47,13 +47,14 @@ These pipelines have 0 runs in the last 90 days AND are disabled/paused:
 
 ## 2. Pipeline Classification
 
-### Category 1: Central Template Consumers (4 pipelines)
+### Category 1: Central Template Consumers (5 pipelines)
 Pipelines that use `templates/build/` or `templates/release/` from a shared branch.
 
 | Pipeline | Template Branch | Templates Used |
 |---|---|---|
 | pricing-engine-ci (101) | `main` | `build-dotnet.yml`, `run-tests.yml`, `release-standard.yml` |
 | portfolio-api-ci (102) | `master` ⚠️ | `build-java.yml`, `release-standard.yml` |
+| portfolio-api-canary (103) | `main` / `staging/preprod` / `staging/release-hardening` (parameterized) ⚠️ | `build-java.yml`, `release-standard.yml` |
 | risk-batch-ci (104) | `staging/preprod` ⚠️ | `build-python.yml`, `run-tests.yml`, `release-standard.yml` |
 | risk-batch-legacy (105) | `legacy/master-support` ⚠️ | `build-python-legacy.yml` |
 
@@ -90,7 +91,7 @@ Pipelines abusing CI infrastructure for compute/data/compliance jobs.
 | daily-positions-export (113) | Weekdays 23:00 UTC | linux-build-workers | Data export + Excel reports |
 | attestation-backfill-weekly (114) | Sun 03:00 UTC | linux-build-workers | Compliance attestation backfill |
 
-### Category 6: Ad-Hoc / Deprecated (3 pipelines)
+### Category 6: Ad-Hoc / Deprecated (4 pipelines)
 Manual or stale pipelines.
 
 | Pipeline | Status | Last Run | Notes |
@@ -820,7 +821,7 @@ index beae707..74d49dc 100644
 
 ## 9. Variable Group & Secret Mapping
 
-### Mapping: 9 ADO Variable Groups → GitHub Actions Equivalents
+### Mapping: 10 ADO Variable Groups → GitHub Actions Equivalents
 
 | # | Variable Group | ADO ID | Consuming Pipelines | Variables (Secret?) | GHA Equivalent | Scope |
 |---|---|---|---|---|---|---|
@@ -833,7 +834,7 @@ index beae707..74d49dc 100644
 | 7 | **frontend-cdn-config** | 210 | 106 | `CDN_ENDPOINT`, `CDN_STORAGE_ACCOUNT`, `CDN_STORAGE_KEY` 🔒, `CDN_PURGE_API_KEY` 🔒 | **Environment secrets** (per env: dev-frontend, staging-frontend) | Env-level: different CDN configs per environment |
 | 8 | **ops-infra-credentials** | 211 | 109 | `K8S_CLUSTER_URL`, `K8S_SERVICE_ACCOUNT_TOKEN` 🔒, `K8S_NAMESPACE` | **Repository secrets** (token) + **Repository variables** (URL, namespace). Consider **OIDC** for K8s auth. | Repo-level: single pipeline |
 | 9 | **data-warehouse-credentials** | 212 | 112 | `DW_CONNECTION_STRING` 🔒, `DW_SCHEMA` | **Repository secrets** (conn string) + **Repository variables** (schema) | Repo-level: single pipeline |
-| — | **positions-db-credentials** | 213 | 113, 116 | `POSITIONS_DB_CONNECTION_STRING` 🔒, `POSITIONS_DB_READONLY_STRING` 🔒 | **Repository secrets** | Repo-level: 2 pipelines (one is dead) |
+| 10 | **positions-db-credentials** | 213 | 113, 116 | `POSITIONS_DB_CONNECTION_STRING` 🔒, `POSITIONS_DB_READONLY_STRING` 🔒 | **Repository secrets** | Repo-level: 2 pipelines (one is dead) |
 
 ### Recommended GHA Secret Architecture
 
@@ -971,9 +972,9 @@ For each `azurerm` service connection:
 | Active pipelines (runs in 90 days) | 15 |
 | Dead pipelines (skip in migration) | 3 |
 | Non-build workloads | 5 (+ 2 hybrid/ad-hoc) |
-| Unique template branches consumed | 6 (main, master, staging/preprod, team/frontend-custom, team/reporting-hotfix, legacy/master-support) |
+| Unique template branches consumed | 7 (main, master, staging/preprod, staging/release-hardening, team/frontend-custom, team/reporting-hotfix, legacy/master-support) |
 | Unreferenced template files | 12 |
-| Variable groups to migrate | 9 (containing 12 secrets) |
+| Variable groups to migrate | 10 (containing 14 secrets) |
 | Service connections to migrate | 4 (1 unused) |
 | Environments to recreate | 6 |
 | Self-hosted pools requiring infra work | 2 (linux-build-workers, high-memory-pool) |

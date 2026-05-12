@@ -1214,7 +1214,7 @@
   "variable_groups": {
     "_endpoint": "GET https://dev.azure.com/contoso-financial/shared-ci-platform/_apis/distributedtask/variablegroups?api-version=7.1",
     "_description": "Shared variable groups referenced by pipelines. These are configured at the ADO project level, NOT in YAML. Any migration must map these to GitHub Actions secrets/variables or environment-level config.",
-    "count": 9,
+    "count": 10,
     "value": [
       {
         "id": 201,
