@@ -54,9 +54,11 @@ jobs:
         run: dotnet build "$(find services/pricing-engine -name '*.sln' | head -1)" --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
 
       # --- mapped from: DotNetCoreCLI@2 (test) with XPlat Code Coverage ---
+      # Run against the solution so all test projects are discovered, matching
+      # ADO's DotNetCoreCLI@2 which expands the glob to all matching projects.
       - name: Run unit tests
         run: |
-          dotnet test "$(find services/pricing-engine -name '*Tests*.csproj' | head -1)" \
+          dotnet test "$(find services/pricing-engine -name '*.sln' | head -1)" \
             --configuration ${{ env.BUILD_CONFIGURATION }} \
             --collect:"XPlat Code Coverage" \
             --results-directory ${{ runner.temp }}/test-results \
