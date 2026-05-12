@@ -1,0 +1,195 @@
+# pricing-engine CI workflow
+# Migrated from: services/pricing-engine/azure-pipelines.yml (ADO pipeline ID 101)
+# Stack: .NET 8
+# Original template source: central templates (main branch)
+#
+# ADO templates inlined:
+#   - templates/build/build-dotnet.yml
+#   - templates/test/run-tests.yml
+#   - templates/release/release-standard.yml
+
+name: pricing-engine-ci
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+    paths:
+      - 'services/pricing-engine/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'services/pricing-engine/**'
+
+env:
+  BUILD_CONFIGURATION: Release
+  ARTIFACT_NAME: pricing-engine-drop
+  DOTNET_VERSION: '8.0.x'
+  SOLUTION_PATH: 'services/pricing-engine/**/*.sln'
+  TEST_PROJECT: 'services/pricing-engine/**/*Tests/*.csproj'
+
+jobs:
+  # ---------- Stage 1: Build ----------
+  # Maps to ADO stage "Build" which consumed templates/build/build-dotnet.yml
+  build:
+    name: Build pricing-engine
+    runs-on: ubuntu-latest
+    steps:
+      # --- mapped from: UseDotNet@2 ---
+      - uses: actions/checkout@v4
+
+      - name: Install .NET SDK ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      # --- mapped from: NuGetToolInstaller@1 + NuGetCommand@2 ---
+      # NuGet is bundled with the .NET SDK; `dotnet restore` replaces both tasks.
+      - name: Restore NuGet packages
+        run: dotnet restore ${{ env.SOLUTION_PATH }}
+
+      # --- mapped from: DotNetCoreCLI@2 (build) ---
+      - name: Build solution
+        run: dotnet build ${{ env.SOLUTION_PATH }} --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
+
+      # --- mapped from: DotNetCoreCLI@2 (test) with XPlat Code Coverage ---
+      - name: Run unit tests
+        run: |
+          dotnet test ${{ env.TEST_PROJECT }} \
+            --configuration ${{ env.BUILD_CONFIGURATION }} \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ${{ runner.temp }}/test-results \
+            --logger "trx;LogFileName=results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: ${{ runner.temp }}/test-results
+
+      # --- mapped from: DotNetCoreCLI@2 (publish) ---
+      - name: Publish artifacts
+        run: |
+          dotnet publish ${{ env.SOLUTION_PATH }} \
+            --configuration ${{ env.BUILD_CONFIGURATION }} \
+            --output ${{ runner.temp }}/staging
+
+      # --- mapped from: PublishBuildArtifacts@1 ---
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ runner.temp }}/staging
+
+      # --- mapped from: publish_artifact.py (Artifactory registration) ---
+      - name: Register artifact in Artifactory
+        run: |
+          python build-tools/scripts/publish_artifact.py \
+            --name "${{ env.ARTIFACT_NAME }}" \
+            --registry Artifactory \
+            --build-id "${{ github.run_id }}"
+        env:
+          BUILD_SOURCEBRANCH: ${{ github.ref }}
+          BUILD_SOURCEVERSION: ${{ github.sha }}
+          AGENT_NAME: ${{ runner.name }}
+          BUILD_ARTIFACTSTAGINGDIRECTORY: ${{ runner.temp }}/staging
+
+  # ---------- Stage 2: Test results processing ----------
+  # Maps to ADO stage "Test" which consumed templates/test/run-tests.yml
+  # The ADO template was called with testFramework=generic so no additional
+  # test runner executes here -- only result publishing & normalisation.
+  test:
+    name: Process test results
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download test results
+        uses: actions/download-artifact@v4
+        with:
+          name: test-results
+          path: ${{ runner.temp }}/test-results
+
+      # --- mapped from: PublishTestResults@2 (JUnit) ---
+      # GHA does not have a built-in test results viewer; results are
+      # available as a downloadable artifact. For richer reporting,
+      # consider dorny/test-reporter or similar marketplace actions.
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: processed-test-results
+          path: ${{ runner.temp }}/test-results
+
+      # --- mapped from: normalize_test_results.py ---
+      - name: Normalize test results
+        if: always()
+        run: |
+          python build-tools/scripts/normalize_test_results.py \
+            --input-dir "${{ runner.temp }}/test-results" \
+            --output "${{ runner.temp }}/staging/normalized-results.json"
+        env:
+          BUILD_ARTIFACTSTAGINGDIRECTORY: ${{ runner.temp }}/staging
+
+      - name: Upload normalized results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: normalized-test-results
+          path: ${{ runner.temp }}/staging/normalized-results.json
+
+  # ---------- Stage 3: Deploy to dev ----------
+  # Maps to ADO stage "Deploy_Dev" which consumed templates/release/release-standard.yml
+  # Original ADO condition: main branch only, after tests pass.
+  deploy-dev:
+    name: Deploy to dev
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- mapped from: download: current ---
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ runner.temp }}/deploy
+
+      # --- mapped from: deployment script ---
+      - name: Execute deployment
+        run: |
+          echo "Deploying ${{ env.ARTIFACT_NAME }} to dev"
+          echo "Strategy: rolling"
+
+      # --- mapped from: notify_release_orchestrator.py (D2 notification) ---
+      - name: Notify D2
+        run: |
+          python build-tools/scripts/notify_release_orchestrator.py \
+            --service "${{ env.ARTIFACT_NAME }}" \
+            --env dev \
+            --build-id "${{ github.run_id }}" \
+            --status success
+        env:
+          BUILD_REQUESTEDFOR: ${{ github.actor }}
+          SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: "${{ github.server_url }}/"
+          SYSTEM_TEAMPROJECT: ${{ github.repository }}
+
+      # --- mapped from: generate_attestation.py ---
+      - name: Generate compliance attestation
+        run: |
+          python build-tools/scripts/generate_attestation.py \
+            --artifact "${{ env.ARTIFACT_NAME }}" \
+            --env dev \
+            --build-id "${{ github.run_id }}"
+        env:
+          BUILD_SOURCEBRANCH: ${{ github.ref }}
+          BUILD_SOURCEVERSION: ${{ github.sha }}
+          BUILD_DEFINITIONNAME: ${{ github.workflow }}
+          AGENT_OS: ${{ runner.os }}
+          BUILD_ARTIFACTSTAGINGDIRECTORY: ${{ runner.temp }}/staging
