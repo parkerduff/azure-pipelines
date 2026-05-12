@@ -70,12 +70,18 @@ jobs:
           name: test-results
           path: ${{ runner.temp }}/test-results
 
-      # --- mapped from: DotNetCoreCLI@2 (publish) ---
-      - name: Publish artifacts
+      # --- mapped from: DotNetCoreCLI@2 (publish) with publishWebProjects: true ---
+      # ADO's publishWebProjects filters to projects using Microsoft.NET.Sdk.Web.
+      # We replicate that by finding web .csproj files and publishing only those.
+      - name: Publish web projects
         run: |
-          dotnet publish ${{ env.SOLUTION_PATH }} \
-            --configuration ${{ env.BUILD_CONFIGURATION }} \
-            --output ${{ runner.temp }}/staging
+          mkdir -p "${{ runner.temp }}/staging"
+          for proj in $(grep -rl '<Project Sdk="Microsoft.NET.Sdk.Web"' services/pricing-engine/ --include='*.csproj'); do
+            echo "Publishing web project: $proj"
+            dotnet publish "$proj" \
+              --configuration ${{ env.BUILD_CONFIGURATION }} \
+              --output "${{ runner.temp }}/staging"
+          done
 
       # --- mapped from: PublishBuildArtifacts@1 ---
       - name: Upload build artifacts
@@ -168,6 +174,8 @@ jobs:
           echo "Strategy: rolling"
 
       # --- mapped from: notify_release_orchestrator.py (D2 notification) ---
+      # The script builds a pipeline URL from ADO env vars. We override
+      # PIPELINE_URL directly so the constructed ADO-style URL is ignored.
       - name: Notify D2
         run: |
           python build-tools/scripts/notify_release_orchestrator.py \
@@ -179,10 +187,12 @@ jobs:
           BUILD_REQUESTEDFOR: ${{ github.actor }}
           SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: "${{ github.server_url }}/"
           SYSTEM_TEAMPROJECT: ${{ github.repository }}
+          PIPELINE_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
       # --- mapped from: generate_attestation.py ---
       - name: Generate compliance attestation
         run: |
+          mkdir -p "${{ runner.temp }}/staging"
           python build-tools/scripts/generate_attestation.py \
             --artifact "${{ env.ARTIFACT_NAME }}" \
             --env dev \

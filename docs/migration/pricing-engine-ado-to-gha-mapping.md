@@ -54,7 +54,7 @@ Since the templates live in the *same* repository, there is no need for a GHA re
 | `NuGetCommand@2` (restore) | `dotnet restore` | Native CLI replaces dedicated task |
 | `DotNetCoreCLI@2` (build) | `dotnet build --no-restore` | Same flags |
 | `DotNetCoreCLI@2` (test) | `dotnet test --collect:"XPlat Code Coverage"` | Added `--results-directory` and TRX logger for GHA compatibility |
-| `DotNetCoreCLI@2` (publish) | `dotnet publish --output` | Same behaviour |
+| `DotNetCoreCLI@2` (publish) with `publishWebProjects: true` | `grep` for `Microsoft.NET.Sdk.Web` + per-project `dotnet publish` | ADO filters to web SDK projects; replicated via grep loop |
 | `PublishBuildArtifacts@1` | `actions/upload-artifact@v4` | Pipeline artifacts → GHA artifacts |
 | `publish_artifact.py` | Same script, env vars remapped | See variable mapping below |
 
@@ -73,8 +73,8 @@ Since the templates live in the *same* repository, there is no need for a GHA re
 | `deployment` job with `environment:` | `jobs.deploy-dev.environment: dev` | Direct equivalent; GHA environments support protection rules & required reviewers |
 | `download: current` | `actions/download-artifact@v4` | Same concept |
 | Deploy script | Inline `run:` | Unchanged |
-| `notify_release_orchestrator.py` | Same script, env vars remapped | Pipeline URL format updated for GHA |
-| `generate_attestation.py` | Same script, env vars remapped | Unchanged |
+| `notify_release_orchestrator.py` | Same script, `PIPELINE_URL` env var override | Script updated to prefer `PIPELINE_URL` over ADO-style URL construction |
+| `generate_attestation.py` | Same script, env vars remapped, `mkdir -p` added | Staging dir must be pre-created since GHA deploy job runs on a fresh runner |
 
 ---
 
