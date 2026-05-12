@@ -796,7 +796,9 @@ index beae707..74d49dc 100644
 
 ## 9. Variable Group & Secret Mapping
 
-9 variable groups configured at the ADO project level. Mapped to GitHub Actions equivalents.
+10 variable groups configured at the ADO project level. Mapped to GitHub Actions equivalents.
+
+> **Note:** The source ADO API response (`ado-api-responses.json`) has `"count": 9` in the `variable_groups` section, but the `value` array contains 10 entries. The actual count is 10.
 
 | ID | Variable Group | Variables | Secrets? | Pipelines Using | GHA Equivalent |
 |----|---------------|-----------|----------|----------------|----------------|
@@ -849,16 +851,17 @@ The following service principal-based authentications should migrate to **GitHub
 | `dev` | None | 101, 104 | `dev` | No protection rules needed. Auto-deploy on push. |
 | `staging` | Approval: `shared-ci-platform-team` (1 approver min). Instructions: "Verify staging test results before proceeding" | 102 | `staging` | **Required reviewers**: `shared-ci-platform-team` (1 min). Add **deployment branches** filter: `main` only. |
 | `preprod` | Approval: `shared-ci-platform-team` + `release-managers` (2 approvers min). Instructions: "Review compliance attestation and artifact baseline comparison". **Business hours**: EST 09:00–17:00 Mon–Fri. | None currently | `preprod` | **Required reviewers**: `shared-ci-platform-team`, `release-managers` (2 min). **Deployment branches**: `main`. No native business-hours gate in GHA — implement via custom workflow step: `if: github.event_name != 'workflow_dispatch' && (steps.check_hours.outputs.in_hours == 'true')`. |
-| `prod` | Approval: `release-managers` + `service-owner` (2 approvers min). Instructions: "Production deployment requires release manager AND service owner approval. Verify compliance attestation is present." **Business hours**: EST 09:00–16:00 Mon–Thu. **Exclusive lock**: Only one production deployment at a time. | 107 | `prod` | **Required reviewers**: `release-managers`, `service-owner` (2 min). **Deployment branches**: `main`. **Concurrency**: `concurrency: group: prod-deploy` (only one at a time). Business hours: custom step (same as preprod). |
+| `prod` | Approval: `release-managers` + `service-owner` (2 approvers min). Instructions: "Production deployment requires release manager AND service owner approval. Verify compliance attestation is present." **Business hours**: EST 09:00–16:00 Mon–Thu. **Exclusive lock**: Only one production deployment at a time. | 107 | `prod` | **Required reviewers**: `release-managers`, `service-owner` (2 min). **Deployment branches**: `main`. **Concurrency**: `concurrency: group: prod-deploy` (only one at a time). Business hours: custom step (same approach as preprod, but different schedule — see below). |
 | `dev-frontend` | None | 106 | `dev-frontend` | No protection rules needed. |
 | `staging-frontend` | Approval: `team-frontend` (1 approver min). Instructions: "Verify SSR bundle and CDN purge before promoting" | 106 | `staging-frontend` | **Required reviewers**: `team-frontend` (1 min). **Deployment branches**: `main`. |
 
 ### Business Hours Gate Implementation (GHA)
 
-GHA does not natively support business-hours restrictions. Implement as a reusable workflow step:
+GHA does not natively support business-hours restrictions. Implement as a reusable workflow step with parameterized schedules:
 
+**`prod` schedule — Mon–Thu 09:00–16:00 EST:**
 ```yaml
-- name: Check business hours
+- name: Check business hours (prod)
   id: check_hours
   run: |
     HOUR=$(TZ="America/New_York" date +%H)
@@ -868,6 +871,22 @@ GHA does not natively support business-hours restrictions. Implement as a reusab
     else
       echo "in_hours=false" >> $GITHUB_OUTPUT
       echo "::error::Deployment blocked: outside business hours (EST Mon-Thu 09:00-16:00)"
+      exit 1
+    fi
+```
+
+**`preprod` schedule — Mon–Fri 09:00–17:00 EST:**
+```yaml
+- name: Check business hours (preprod)
+  id: check_hours
+  run: |
+    HOUR=$(TZ="America/New_York" date +%H)
+    DAY=$(TZ="America/New_York" date +%u)  # 1=Mon, 7=Sun
+    if [[ $DAY -le 5 && $HOUR -ge 9 && $HOUR -lt 17 ]]; then
+      echo "in_hours=true" >> $GITHUB_OUTPUT
+    else
+      echo "in_hours=false" >> $GITHUB_OUTPUT
+      echo "::error::Deployment blocked: outside business hours (EST Mon-Fri 09:00-17:00)"
       exit 1
     fi
 ```
