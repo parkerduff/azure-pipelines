@@ -77,7 +77,7 @@ jobs:
       - name: Publish web projects
         run: |
           mkdir -p "${{ runner.temp }}/staging"
-          for proj in $(grep -rl '<Project Sdk="Microsoft.NET.Sdk.Web"' services/pricing-engine/ --include='*.csproj'); do
+          for proj in $(grep -rl '<Project Sdk="Microsoft.NET.Sdk.Web"' services/pricing-engine/ --include='*.csproj' || true); do
             echo "Publishing web project: $proj"
             dotnet publish "$proj" \
               --configuration ${{ env.BUILD_CONFIGURATION }} \
