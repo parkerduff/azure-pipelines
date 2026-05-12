@@ -27,8 +27,6 @@ env:
   BUILD_CONFIGURATION: Release
   ARTIFACT_NAME: pricing-engine-drop
   DOTNET_VERSION: '8.0.x'
-  SOLUTION_PATH: 'services/pricing-engine/**/*.sln'
-  TEST_PROJECT: 'services/pricing-engine/**/*Tests/*.csproj'
 
 jobs:
   # ---------- Stage 1: Build ----------
@@ -47,17 +45,18 @@ jobs:
 
       # --- mapped from: NuGetToolInstaller@1 + NuGetCommand@2 ---
       # NuGet is bundled with the .NET SDK; `dotnet restore` replaces both tasks.
+      # GHA bash runs without globstar, so we use find instead of ** globs.
       - name: Restore NuGet packages
-        run: dotnet restore ${{ env.SOLUTION_PATH }}
+        run: dotnet restore "$(find services/pricing-engine -name '*.sln' | head -1)"
 
       # --- mapped from: DotNetCoreCLI@2 (build) ---
       - name: Build solution
-        run: dotnet build ${{ env.SOLUTION_PATH }} --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
+        run: dotnet build "$(find services/pricing-engine -name '*.sln' | head -1)" --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
 
       # --- mapped from: DotNetCoreCLI@2 (test) with XPlat Code Coverage ---
       - name: Run unit tests
         run: |
-          dotnet test ${{ env.TEST_PROJECT }} \
+          dotnet test "$(find services/pricing-engine -name '*Tests*.csproj' | head -1)" \
             --configuration ${{ env.BUILD_CONFIGURATION }} \
             --collect:"XPlat Code Coverage" \
             --results-directory ${{ runner.temp }}/test-results \
@@ -91,7 +90,9 @@ jobs:
           path: ${{ runner.temp }}/staging
 
       # --- mapped from: publish_artifact.py (Artifactory registration) ---
+      # ADO only triggered on push; guard this step to avoid registering PR artifacts.
       - name: Register artifact in Artifactory
+        if: github.event_name == 'push'
         run: |
           python build-tools/scripts/publish_artifact.py \
             --name "${{ env.ARTIFACT_NAME }}" \
@@ -185,8 +186,6 @@ jobs:
             --status success
         env:
           BUILD_REQUESTEDFOR: ${{ github.actor }}
-          SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: "${{ github.server_url }}/"
-          SYSTEM_TEAMPROJECT: ${{ github.repository }}
           PIPELINE_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
       # --- mapped from: generate_attestation.py ---
