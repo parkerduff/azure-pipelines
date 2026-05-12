@@ -90,6 +90,7 @@ jobs:
         with:
           name: ${{ env.ARTIFACT_NAME }}
           path: ${{ runner.temp }}/staging
+          if-no-files-found: warn
 
       # --- mapped from: publish_artifact.py (Artifactory registration) ---
       # ADO only triggered on push; guard this step to avoid registering PR artifacts.
