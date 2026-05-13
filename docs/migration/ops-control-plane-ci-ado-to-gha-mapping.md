@@ -34,7 +34,7 @@
 |---|---|---|---|---|---|
 | 0 | *(implicit)* | *(auto-checkout)* | Checkout repository | `actions/checkout@v4` | ADO checks out automatically; GHA requires explicit checkout |
 | 1 | Install Go 1.22 | `GoTool@0` (version: `1.22`) | Install Go 1.22 | `actions/setup-go@v5` (go-version: `1.22`) | Direct equivalent |
-| 2 | Download modules | `script: go mod download && go mod verify` | Download modules | `run: go mod download && go mod verify` | Direct translation |
+| 2 | Download modules | `script\|` block: `go mod download` / `go mod verify` | Download modules | `run\|` block: `go mod download` / `go mod verify` | Both use multiline block; failure on any line fails the step |
 | 3 | Vet | `script: go vet ./...` | Vet | `run: go vet ./...` | Direct translation |
 | 4 | Run tests | `script: go test ./... -v -coverprofile=coverage.out` | Run tests | `run: go test ./... -v -coverprofile=coverage.out` | Direct translation |
 | 5 | Build binary | `script: CGO_ENABLED=0 ... go build ... -o $(Build.ArtifactStagingDirectory)/ops-control-plane ./cmd/server` | Build binary | `run: mkdir -p ... && CGO_ENABLED=0 ... go build ... -o ${{ runner.temp }}/staging/ops-control-plane ./cmd/server` | `$(Build.ArtifactStagingDirectory)` → `${{ runner.temp }}/staging`; added `mkdir -p` for fresh runner |
@@ -73,9 +73,10 @@ No conditions are used in this pipeline — all steps run unconditionally.
 
 | # | Gap | Impact | Mitigation |
 |---|---|---|---|
-| 1 | ADO `PublishBuildArtifacts` feeds into the ADO artifact browser; GHA `upload-artifact` stores in GHA artifact storage | Artifact access path changes for downstream consumers | Downstream tools must query GHA artifacts API instead of ADO |
+| 1 | ADO `PublishBuildArtifacts` publishes the entire staging directory; GHA `upload-artifact` publishes the staging directory path | Artifact structure may differ slightly for downstream consumers | Downstream tools must query GHA artifacts API instead of ADO |
 | 2 | PR trigger added in GHA (not present in ADO) | More CI runs than ADO (runs on PRs too) | Intentional improvement — catches issues before merge |
 | 3 | ADO `GoTool@0` vs GHA `actions/setup-go@v5` | Minor version resolution may differ | Both pin to `1.22`; GHA resolves latest patch within `1.22.x` |
+| 4 | Custom `GOPATH` set under `github.workspace` | `actions/setup-go@v5` caching uses `GOPATH` for module cache; workspace is cleaned between runs | setup-go's Actions cache handles persistence; on-disk cache is ephemeral |
 
 ---
 
