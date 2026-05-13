@@ -1,0 +1,162 @@
+# frontend-workbench-ci CI workflow
+# Migrated from: services/frontend-workbench/azure-pipelines.yml (ADO pipeline ID 106)
+# Stack: Node.js (React)
+# Original template source: team/frontend-custom
+#
+# ADO templates inlined:
+#   - alt-templates/frontend/frontend-build.yml
+#   - alt-templates/frontend/frontend-deploy.yml
+
+name: frontend-workbench-ci
+
+on:
+  push:
+    branches:
+      - main
+      # ADO used feature/* (single-level). Broadened to feature/** for recursive
+      # matching, since GHA treats * as single-level by default.
+      - 'feature/**'
+    paths:
+      - 'services/frontend-workbench/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'services/frontend-workbench/**'
+
+env:
+  ARTIFACT_NAME: frontend-workbench-bundle
+
+jobs:
+  # ---------- Stage: Build ----------
+  # Maps to ADO stage "Build" which consumed alt-templates/frontend/frontend-build.yml
+  build:
+    name: Build frontend-workbench
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- mapped from: NodeTool@0 ---
+      - name: Install Node.js 18.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+
+      # --- mapped from: script (npm ci) ---
+      - name: Install dependencies
+        run: npm ci
+        working-directory: services/frontend-workbench
+
+      # --- mapped from: script (npm run lint) ---
+      - name: Lint check
+        run: npm run lint
+        working-directory: services/frontend-workbench
+
+      # --- mapped from: script (npm run build:react) ---
+      - name: Build React app
+        run: npm run build:react
+        working-directory: services/frontend-workbench
+
+      # --- mapped from: script (npm run build:ssr) [enableSSR=true] ---
+      - name: Build SSR bundle
+        run: npm run build:ssr
+        working-directory: services/frontend-workbench
+
+      # --- mapped from: script (npm test -- --ci --coverage) ---
+      - name: Run tests
+        run: npm test -- --ci --coverage
+        working-directory: services/frontend-workbench
+
+      # --- mapped from: ArchiveFiles@2 (includeRootFolder: false) ---
+      - name: Archive frontend bundle
+        run: |
+          mkdir -p "${{ runner.temp }}/staging"
+          cd services/frontend-workbench/build
+          zip -r "${{ runner.temp }}/staging/${{ env.ARTIFACT_NAME }}.zip" .
+
+      # --- mapped from: script (npx lhci autorun) ---
+      - name: Run Lighthouse CI audit
+        run: npx lhci autorun --collect.staticDistDir=build/ || true
+        working-directory: services/frontend-workbench
+
+      # --- mapped from: PublishBuildArtifacts@1 ---
+      # ADO artifact name included Build.BuildId suffix; replicated with github.run_id.
+      - name: Upload frontend bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/staging/
+          if-no-files-found: error
+
+  # ---------- Stage: Deploy_Dev ----------
+  # Maps to ADO stage "Deploy_Dev" which consumed alt-templates/frontend/frontend-deploy.yml
+  # ADO used a deployment job with environment: dev-frontend and strategy: runOnce.
+  deploy-dev:
+    name: Deploy to dev
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: dev-frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- mapped from: download: current ---
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/staging
+
+      # --- mapped from: script (Upload to CDN) ---
+      - name: Upload to CDN
+        run: |
+          echo "Uploading static assets to CDN..."
+          echo "Environment: dev"
+
+      # --- mapped from: script (Purge CDN cache) [cdnPurge=true] ---
+      - name: Purge CDN cache
+        run: |
+          echo "Purging CDN cache for dev..."
+
+      # --- mapped from: script (Health check) ---
+      - name: Health check
+        run: |
+          echo "Verifying deployment health..."
+          curl -sf https://dev.example.com/health || exit 1
+
+  # ---------- Stage: Deploy_Staging ----------
+  # Maps to ADO stage "Deploy_Staging" which consumed alt-templates/frontend/frontend-deploy.yml
+  # ADO condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  # Translated to: push events on main branch only (excludes PRs and feature branches).
+  deploy-staging:
+    name: Deploy to staging
+    needs: deploy-dev
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: staging-frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- mapped from: download: current ---
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/staging
+
+      # --- mapped from: script (Upload to CDN) ---
+      - name: Upload to CDN
+        run: |
+          echo "Uploading static assets to CDN..."
+          echo "Environment: staging"
+
+      # --- mapped from: script (Purge CDN cache) [cdnPurge=true] ---
+      - name: Purge CDN cache
+        run: |
+          echo "Purging CDN cache for staging..."
+
+      # --- mapped from: script (Health check) ---
+      - name: Health check
+        run: |
+          echo "Verifying deployment health..."
+          curl -sf https://staging.example.com/health || exit 1
