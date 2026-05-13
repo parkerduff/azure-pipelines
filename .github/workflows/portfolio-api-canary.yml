@@ -88,15 +88,16 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: 'services/portfolio-api/**/surefire-reports/TEST-*.xml'
+          path: '**/surefire-reports/TEST-*.xml'
           if-no-files-found: ignore
 
       # --- mapped from: script 'Stage build artifacts' ---
+      # ADO template uses root-relative 'cp target/*.jar' — matched here.
       - name: Stage build artifacts
         run: |
           mkdir -p "${{ runner.temp }}/staging"
-          find services/portfolio-api -path '*/target/*.jar' -exec cp {} "${{ runner.temp }}/staging/" \; 2>/dev/null || true
-          find services/portfolio-api -path '*/target/*.war' -exec cp {} "${{ runner.temp }}/staging/" \; 2>/dev/null || true
+          cp target/*.jar "${{ runner.temp }}/staging/" 2>/dev/null || true
+          cp target/*.war "${{ runner.temp }}/staging/" 2>/dev/null || true
 
       # --- mapped from: PublishBuildArtifacts@1 ---
       - name: Upload build artifacts
