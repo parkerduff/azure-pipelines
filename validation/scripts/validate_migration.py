@@ -357,8 +357,8 @@ def main():
         baselines_dir=args.baselines,
     )
 
+    output_text = report
     if args.format == "json":
-        # Re-run checks and output as JSON
         gha_doc = _load_yaml(args.gha_workflow)
         ado_doc = _load_yaml(args.ado_pipeline)
         gha_jobs = _extract_gha_jobs(gha_doc)
@@ -374,21 +374,20 @@ def main():
         }
         passed = sum(1 for c in checks.values() if c["passed"])
         total = len(checks)
-        output = json.dumps({
+        output_text = json.dumps({
             "service": args.service,
             "score": int((passed / total) * 100),
             "passed": passed,
             "total": total,
             "checks": checks,
         }, indent=2)
-        print(output)
-    else:
-        print(report)
+
+    print(output_text)
 
     if args.output:
         os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
         with open(args.output, "w") as f:
-            f.write(report if args.format == "markdown" else output)
+            f.write(output_text)
 
 
 if __name__ == "__main__":

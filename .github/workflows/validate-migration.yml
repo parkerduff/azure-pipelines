@@ -44,7 +44,7 @@ jobs:
           if [ $LINT_EXIT -ne 0 ]; then
             echo "### actionlint found issues:" >> "$GITHUB_STEP_SUMMARY"
             echo '```' >> "$GITHUB_STEP_SUMMARY"
-            actionlint 2>&1 >> "$GITHUB_STEP_SUMMARY" || true
+            actionlint >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
             echo '```' >> "$GITHUB_STEP_SUMMARY"
           else
             echo "actionlint: all workflows valid" >> "$GITHUB_STEP_SUMMARY"
@@ -122,8 +122,8 @@ jobs:
             REPORT="${REPORT}${RESULT}"$'\n\n'
           done
 
-          # Also run for all workflows on manual dispatch
-          if [ -z "${{ steps.detect.outputs.workflows }}" ]; then
+          # Full scan on manual dispatch only
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -z "${{ steps.detect.outputs.workflows }}" ]; then
             for wf in .github/workflows/*-ci.yml; do
               [ -f "$wf" ] || continue
               BASE=$(basename "$wf" .yml)
@@ -147,7 +147,7 @@ jobs:
 
           # Write report to file (PR comment body has a size limit)
           echo "$REPORT" > /tmp/validation-report.md
-          cat "$REPORT" >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+          cat /tmp/validation-report.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
 
       - name: Post validation report to PR
         if: github.event_name == 'pull_request'
