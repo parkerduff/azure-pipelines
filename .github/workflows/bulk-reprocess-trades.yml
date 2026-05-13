@@ -72,14 +72,14 @@ jobs:
           INPUT_END_DATE: ${{ inputs.endDate }}
           INPUT_TRADE_TYPES: ${{ inputs.tradeTypes }}
         run: |
-          mkdir -p "${{ runner.temp }}/staging/reprocessed"
+          mkdir -p "$BUILD_ARTIFACTSTAGINGDIRECTORY/reprocessed"
           echo "Reprocessing trades from $INPUT_START_DATE to $INPUT_END_DATE"
           echo "Trade types: $INPUT_TRADE_TYPES"
           python adhoc/scripts/reprocess_trades.py \
             --start-date "$INPUT_START_DATE" \
             --end-date "$INPUT_END_DATE" \
             --types "$INPUT_TRADE_TYPES" \
-            --output "${{ runner.temp }}/staging/reprocessed/"
+            --output "$BUILD_ARTIFACTSTAGINGDIRECTORY/reprocessed/"
 
       # --- mapped from: PublishBuildArtifacts@1 ---
       - name: Archive reprocessed data
