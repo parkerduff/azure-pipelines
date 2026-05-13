@@ -1,0 +1,228 @@
+# risk-batch-ci CI workflow
+# Migrated from: services/risk-batch/azure-pipelines.yml (ADO pipeline ID 104)
+# Stack: Python 3.11
+# Original template source: staging/preprod
+#
+# ADO templates inlined:
+#   - templates/build/build-python.yml (staging/preprod — includes retry logic + testRetryCount)
+#   - templates/test/run-tests.yml (staging/preprod)
+#   - templates/release/release-standard.yml (staging/preprod)
+
+name: risk-batch-ci
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'services/risk-batch/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'services/risk-batch/**'
+
+env:
+  ARTIFACT_NAME: risk-batch-dist
+  PYTHON_VERSION: '3.11'
+  TEST_RETRY_COUNT: 3
+
+jobs:
+  # ==========================================================================
+  # Build job — mapped from ADO Stage: Build
+  # ==========================================================================
+  build:
+    name: Build risk-batch
+    runs-on: ubuntu-latest
+
+    env:
+      # ADO env var shims so helper scripts run unmodified
+      BUILD_SOURCEBRANCH: ${{ github.ref }}
+      BUILD_SOURCEVERSION: ${{ github.sha }}
+      BUILD_BUILDID: ${{ github.run_id }}
+      BUILD_ARTIFACTSTAGINGDIRECTORY: ${{ runner.temp }}/staging
+      BUILD_SOURCESDIRECTORY: ${{ github.workspace }}
+      AGENT_NAME: ${{ runner.name }}
+      AGENT_OS: ${{ runner.os }}
+      BUILD_REQUESTEDFOR: ${{ github.actor }}
+      BUILD_DEFINITIONNAME: ${{ github.workflow }}
+      SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: ${{ github.server_url }}/
+      SYSTEM_TEAMPROJECT: ${{ github.repository }}
+      PIPELINE_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+    steps:
+      # --- mapped from: checkout (implicit) ---
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # --- mapped from: UsePythonVersion@0 ---
+      - name: Use Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Create staging directory
+        run: mkdir -p "${{ runner.temp }}/staging"
+
+      # --- mapped from: script (Install dependencies) ---
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r services/risk-batch/requirements.txt
+
+      # --- mapped from: script (Run linting checks) ---
+      - name: Run linting checks
+        run: |
+          pip install flake8 black mypy
+          flake8 src/ --max-line-length=120
+          black --check src/
+
+      # --- mapped from: script (Run tests with coverage — retry-enabled) ---
+      - name: Run tests with coverage (retry-enabled)
+        run: |
+          pip install pytest pytest-cov pytest-junitxml pytest-rerunfailures
+          RETRY=0
+          MAX_RETRY=${{ env.TEST_RETRY_COUNT }}
+          until pytest tests/ \
+            --junitxml="${{ runner.temp }}/staging/test-results.xml" \
+            --cov=src/ \
+            --cov-report=xml:"${{ runner.temp }}/staging/coverage.xml" \
+            --reruns 2 --reruns-delay 5; do
+            RETRY=$((RETRY + 1))
+            if [ $RETRY -ge $MAX_RETRY ]; then
+              echo "Tests failed after $MAX_RETRY retries"
+              exit 1
+            fi
+            echo "Test retry $RETRY of $MAX_RETRY..."
+            sleep 10
+          done
+
+      # --- mapped from: PublishTestResults@2 (build-python.yml) ---
+      - name: Upload test results (build)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-build
+          path: ${{ runner.temp }}/staging/test-results.xml
+
+      # --- mapped from: script (Build distribution) ---
+      - name: Build distribution
+        run: |
+          python setup.py sdist bdist_wheel
+          cp -r dist/ "${{ runner.temp }}/staging/dist/"
+
+      # --- mapped from: script (Register artifact in Artifactory) ---
+      - name: Register artifact in Artifactory
+        if: github.event_name == 'push'
+        run: |
+          python build-tools/scripts/publish_artifact.py \
+            --name "${{ env.ARTIFACT_NAME }}" \
+            --registry Artifactory \
+            --build-id "${{ github.run_id }}"
+
+      # --- mapped from: script (Stamp preprod validation marker) ---
+      - name: Stamp preprod validation marker
+        run: |
+          echo "Preprod artifact validation stamp"
+          echo "${{ github.run_id }}" > "${{ runner.temp }}/staging/preprod-stamp.txt"
+
+      # --- mapped from: PublishBuildArtifacts@1 ---
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ runner.temp }}/staging
+
+      # ======================================================================
+      # Steps from run-tests.yml template
+      # ======================================================================
+
+      # --- mapped from: script (Create test results directory) ---
+      - name: Create test results directory
+        run: mkdir -p "${{ runner.temp }}/staging/test-results"
+
+      # --- mapped from: script (Run pytest — run-tests.yml) ---
+      - name: Run pytest (run-tests template)
+        run: |
+          pytest tests/ \
+            --junitxml="${{ runner.temp }}/staging/test-results/results.xml" \
+            --tb=short
+
+      # --- mapped from: PublishTestResults@2 (run-tests.yml) ---
+      - name: Upload test results (run-tests)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-run-tests
+          path: ${{ runner.temp }}/staging/test-results
+
+      # --- mapped from: script (Normalize test results) ---
+      - name: Normalize test results
+        if: always()
+        run: |
+          python build-tools/scripts/normalize_test_results.py \
+            --input-dir "${{ runner.temp }}/staging/test-results" \
+            --output "${{ runner.temp }}/staging/normalized-results.json"
+
+  # ==========================================================================
+  # Deploy job — mapped from ADO Stage: Release (Deploy to dev)
+  # ==========================================================================
+  deploy-dev:
+    name: Deploy to dev
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: dev
+
+    env:
+      # ADO env var shims so helper scripts run unmodified
+      BUILD_SOURCEBRANCH: ${{ github.ref }}
+      BUILD_SOURCEVERSION: ${{ github.sha }}
+      BUILD_BUILDID: ${{ github.run_id }}
+      BUILD_ARTIFACTSTAGINGDIRECTORY: ${{ runner.temp }}/staging
+      BUILD_SOURCESDIRECTORY: ${{ github.workspace }}
+      AGENT_NAME: ${{ runner.name }}
+      AGENT_OS: ${{ runner.os }}
+      BUILD_REQUESTEDFOR: ${{ github.actor }}
+      BUILD_DEFINITIONNAME: ${{ github.workflow }}
+      SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: ${{ github.server_url }}/
+      SYSTEM_TEAMPROJECT: ${{ github.repository }}
+      PIPELINE_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+    steps:
+      # --- mapped from: checkout (implicit for scripts) ---
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create staging directory
+        run: mkdir -p "${{ runner.temp }}/staging"
+
+      # --- mapped from: download artifact ---
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ runner.temp }}/staging
+
+      # --- mapped from: script (Execute deployment) ---
+      - name: Execute deployment
+        run: |
+          echo "Deploying ${{ env.ARTIFACT_NAME }} to dev"
+          echo "Strategy: rolling"
+
+      # --- mapped from: script (Notify release-orchestrator) ---
+      - name: Notify release-orchestrator
+        run: |
+          python build-tools/scripts/notify_release_orchestrator.py \
+            --service "${{ env.ARTIFACT_NAME }}" \
+            --env dev \
+            --build-id "${{ github.run_id }}" \
+            --status success
+
+      # --- mapped from: script (Generate compliance attestation) ---
+      - name: Generate compliance attestation
+        run: |
+          python build-tools/scripts/generate_attestation.py \
+            --artifact "${{ env.ARTIFACT_NAME }}" \
+            --env dev \
+            --build-id "${{ github.run_id }}"
