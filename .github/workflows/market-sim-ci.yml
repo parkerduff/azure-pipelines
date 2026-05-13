@@ -1,0 +1,89 @@
+# market-sim-ci CI workflow
+# Migrated from: services/market-sim/azure-pipelines.yml (ADO pipeline ID 108)
+# Stack: Rust
+# Original template source: None (custom inline YAML)
+#
+# ADO templates inlined: None — this pipeline was fully inline
+
+name: market-sim-ci
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'services/market-sim/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'services/market-sim/**'
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  build:
+    name: 'Build market-sim'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # --- mapped from: checkout (implicit in ADO) ---
+      - uses: actions/checkout@v4
+
+      # --- mapped from: script "Install Rust" ---
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      # --- mapped from: script "Fetch dependencies" ---
+      - name: Fetch dependencies
+        run: cargo fetch
+        working-directory: services/market-sim
+
+      # --- mapped from: script "Lint with clippy" ---
+      - name: Lint with clippy
+        run: cargo clippy -- -D warnings
+        working-directory: services/market-sim
+
+      # --- mapped from: script "Build release binary" ---
+      - name: Build release binary
+        run: cargo build --release
+        working-directory: services/market-sim
+
+      # --- mapped from: script "Run tests" ---
+      - name: Run tests
+        run: cargo test -- --test-threads=1
+        working-directory: services/market-sim
+
+      # --- mapped from: script "Stage binary" ---
+      - name: Stage binary
+        run: |
+          mkdir -p "${{ runner.temp }}/staging"
+          cp target/release/market-sim "${{ runner.temp }}/staging/"
+        working-directory: services/market-sim
+
+      # --- mapped from: PublishBuildArtifacts@1 "Publish market-sim binary" ---
+      - name: Publish market-sim binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: market-sim-binary
+          path: ${{ runner.temp }}/staging/market-sim
+
+  deploy:
+    name: 'Deploy market-sim'
+    runs-on: ubuntu-latest
+    needs: build
+    if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      # --- mapped from: checkout (implicit in ADO) ---
+      - uses: actions/checkout@v4
+
+      # --- mapped from: script "Deploy to cluster" ---
+      - name: Deploy to cluster
+        run: |
+          echo "Deploying market-sim to compute cluster..."
+          echo "This deployment is managed outside D2"
