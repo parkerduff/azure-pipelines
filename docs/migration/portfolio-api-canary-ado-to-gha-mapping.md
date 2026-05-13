@@ -56,7 +56,7 @@ In GHA, templates are inlined. Branch-specific differences are handled with `if:
 | # | ADO Task / Step | GHA Step | Input Translation |
 |---|----------------|----------|-------------------|
 | 1 | `JavaToolInstaller@0` (jdkVersion: 17, PreInstalled) | `actions/setup-java@v4` (distribution: temurin, java-version: 17) | ADO `jdkSourceOption: PreInstalled` → GHA downloads if needed |
-| 2 | `Maven@4` (goals vary by branch, options: `-B -DskipTests=false`) | `run: mvn ...` with branch-conditional goals | main: `clean package`; others: `package`. Uses `find` to locate `pom.xml` (no glob patterns). |
+| 2 | `Maven@4` (goals vary by branch, options: `-B -DskipTests=false`, mavenPomFile: `pom.xml`) | `run: mvn ...` with branch-conditional goals | main: `clean package`; others: `package`. Uses root-relative `pom.xml` to match ADO template. |
 | 3 | *(Maven@4 publishJUnitResults)* | `actions/upload-artifact@v4` (test-results) | ADO natively publishes to Test tab; GHA uploads as artifact. `if: always()` ensures capture on test failure. |
 | 4 | `script: cp target/*.jar ...` (stage artifacts) | `run: find ... -exec cp` | Replaced `cp target/*.jar $(Build.ArtifactStagingDirectory)/` with `find` to avoid glob issues. |
 | 5 | `PublishBuildArtifacts@1` | `actions/upload-artifact@v4` | `pathToPublish` → `path`, `artifactName` → `name` |

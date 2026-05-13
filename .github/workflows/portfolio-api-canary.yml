@@ -70,15 +70,14 @@ jobs:
 
       # --- mapped from: Maven@4 ---
       # main branch template uses 'clean package'; other branches use 'package'.
+      # ADO template specifies mavenPomFile: 'pom.xml' (root-relative).
       - name: Maven build
         run: |
           BRANCH="${{ github.event.inputs.templateBranch || 'main' }}"
           if [ "$BRANCH" = "main" ]; then
-            mvn clean package -B -DskipTests=false \
-              -f "$(find services/portfolio-api -name 'pom.xml' -maxdepth 1 | head -1)"
+            mvn clean package -B -DskipTests=false -f pom.xml
           else
-            mvn package -B -DskipTests=false \
-              -f "$(find services/portfolio-api -name 'pom.xml' -maxdepth 1 | head -1)"
+            mvn package -B -DskipTests=false -f pom.xml
           fi
 
       # --- mapped from: Maven@4 publishJUnitResults ---
