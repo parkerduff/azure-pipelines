@@ -41,9 +41,9 @@ Defaults applied: `runTests: true`, `enableLinting: true`, `publishArtifacts: tr
 | 4 | Script: `pytest` with retry loop (`testRetryCount: 3`, `--reruns 2`) | `run: pytest` with retry loop | **staging/preprod-specific retry logic** preserved |
 | 5 | `PublishTestResults@2` (condition: always) | `actions/upload-artifact@v4` (if: always()) | GHA lacks native test results tab; uploaded as artifact |
 | 6 | Script: `python setup.py sdist bdist_wheel` | `run: python setup.py sdist bdist_wheel` | |
-| 7 | `PublishBuildArtifacts@1` | `actions/upload-artifact@v4` | |
-| 8 | Script: `publish_artifact.py` | `run: python publish_artifact.py` | **Guarded to push-only** (`if: github.event_name == 'push'`) |
-| 9 | Script: Stamp preprod validation marker | `run: echo ...` | |
+| 7 | Script: `publish_artifact.py` | `run: python publish_artifact.py` | **Guarded to push-only** (`if: github.event_name == 'push'`). Registry normalized from `artifact-registry` (staging/preprod) to `Artifactory` (codebase standard). |
+| 8 | Script: Stamp preprod validation marker | `run: echo ...` | |
+| 9 | `PublishBuildArtifacts@1` | `actions/upload-artifact@v4` | **Moved after stamp** so `preprod-stamp.txt` is included in artifact |
 
 ### From `templates/test/run-tests.yml` (staging/preprod)
 
@@ -116,9 +116,10 @@ Defaults applied: `deployStrategy: 'rolling'`, `requireApproval: false`, `notify
 | Native test results tab | ADO `PublishTestResults@2` populates the Tests tab; GHA has no built-in equivalent | Test results uploaded as artifacts. Consider adding `dorny/test-reporter@v1` for richer in-PR reporting. |
 | Pipeline URL format | ADO scripts construct `CollectionUri + Project + /_build/results?buildId=X`; GHA uses `server_url/repository/actions/runs/run_id` | `notify_release_orchestrator.py` updated to prefer `PIPELINE_URL` env var with fallback to ADO format |
 | Branch glob scope | ADO `services/risk-batch/**` matches recursively (same in GHA) | No difference for this pipeline |
-| Preprod stamp | ADO writes `preprod-stamp.txt` inside staging dir | Preserved identically in GHA |
+| Preprod stamp | ADO writes `preprod-stamp.txt` inside staging dir | Preserved in GHA; artifact upload moved after stamp so `preprod-stamp.txt` is included in the uploaded artifact |
 | Test retry logic | `staging/preprod`-specific: outer retry loop (`testRetryCount: 3`) + inner `--reruns 2` | Preserved identically — this is the key differentiator from `main` branch templates |
 | Duplicate test execution | ADO pipeline runs tests twice (once in `build-python.yml`, once in `run-tests.yml`) | **Pre-existing behavior preserved** — not fixed during migration |
+| Registry name | `staging/preprod` template uses `artifact-registry`; all other branches use `Artifactory` | **Normalized to `Artifactory`** during migration for codebase consistency |
 
 ## 9. Secrets Required
 

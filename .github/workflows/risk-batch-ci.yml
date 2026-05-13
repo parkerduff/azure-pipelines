@@ -111,20 +111,13 @@ jobs:
           python setup.py sdist bdist_wheel
           cp -r dist/ "${{ runner.temp }}/staging/dist/"
 
-      # --- mapped from: PublishBuildArtifacts@1 ---
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.ARTIFACT_NAME }}
-          path: ${{ runner.temp }}/staging
-
-      # --- mapped from: script (Register artifact in artifact-registry) ---
-      - name: Register artifact in artifact-registry
+      # --- mapped from: script (Register artifact in Artifactory) ---
+      - name: Register artifact in Artifactory
         if: github.event_name == 'push'
         run: |
           python build-tools/scripts/publish_artifact.py \
             --name "${{ env.ARTIFACT_NAME }}" \
-            --registry artifact-registry \
+            --registry Artifactory \
             --build-id "${{ github.run_id }}"
 
       # --- mapped from: script (Stamp preprod validation marker) ---
@@ -132,6 +125,13 @@ jobs:
         run: |
           echo "Preprod artifact validation stamp"
           echo "${{ github.run_id }}" > "${{ runner.temp }}/staging/preprod-stamp.txt"
+
+      # --- mapped from: PublishBuildArtifacts@1 ---
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ runner.temp }}/staging
 
       # ======================================================================
       # Steps from run-tests.yml template
