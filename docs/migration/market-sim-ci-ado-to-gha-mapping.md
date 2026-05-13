@@ -68,7 +68,7 @@
 
 | ADO Condition | GHA `if:` Expression |
 |---|---|
-| `and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))` | `github.event_name == 'push' && github.ref == 'refs/heads/main'` |
+| `and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))` | `success() && github.event_name == 'push' && github.ref == 'refs/heads/main'` |
 
 The GHA condition additionally checks `github.event_name == 'push'` to prevent deployment on pull_request events (which was not a concern in ADO since PR triggers were not configured).
 

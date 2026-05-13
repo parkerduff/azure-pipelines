@@ -76,7 +76,7 @@ jobs:
     name: 'Deploy market-sim'
     runs-on: ubuntu-latest
     needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment: production
     steps:
       # --- mapped from: checkout (implicit in ADO) ---
