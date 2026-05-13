@@ -60,22 +60,29 @@
 
 ## 5. ADO Variable Shims
 
-The following environment variables are set at job level so that any helper scripts expecting ADO variables will work unmodified:
+The following environment variables are set so that any helper scripts expecting ADO variables will work unmodified.
+
+**Job-level** (`github.*` context — available at job level):
 
 | Env Var | GHA Value |
 |---|---|
 | `BUILD_SOURCEBRANCH` | `${{ github.ref }}` |
 | `BUILD_SOURCEVERSION` | `${{ github.sha }}` |
 | `BUILD_BUILDID` | `${{ github.run_id }}` |
-| `BUILD_ARTIFACTSTAGINGDIRECTORY` | `${{ runner.temp }}/staging` |
 | `BUILD_SOURCESDIRECTORY` | `${{ github.workspace }}` |
-| `AGENT_NAME` | `${{ runner.name }}` |
-| `AGENT_OS` | `${{ runner.os }}` |
 | `BUILD_REQUESTEDFOR` | `${{ github.actor }}` |
 | `BUILD_DEFINITIONNAME` | `${{ github.workflow }}` |
 | `SYSTEM_TEAMFOUNDATIONCOLLECTIONURI` | `${{ github.server_url }}/` |
 | `SYSTEM_TEAMPROJECT` | `${{ github.repository }}` |
 | `PIPELINE_URL` | `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}` |
+
+**Step-level** (`runner.*` context — only available at step level):
+
+| Env Var | GHA Value |
+|---|---|
+| `BUILD_ARTIFACTSTAGINGDIRECTORY` | `${{ runner.temp }}/staging` |
+| `AGENT_NAME` | `${{ runner.name }}` |
+| `AGENT_OS` | `${{ runner.os }}` |
 
 ---
 
