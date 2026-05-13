@@ -34,14 +34,11 @@ jobs:
     timeout-minutes: 480
 
     env:
-      # --- ADO variable shims (so helper scripts run unmodified) ---
+      # --- ADO variable shims (github.* available at job level) ---
       BUILD_SOURCEBRANCH: ${{ github.ref }}
       BUILD_SOURCEVERSION: ${{ github.sha }}
       BUILD_BUILDID: ${{ github.run_id }}
-      BUILD_ARTIFACTSTAGINGDIRECTORY: ${{ runner.temp }}/staging
       BUILD_SOURCESDIRECTORY: ${{ github.workspace }}
-      AGENT_NAME: ${{ runner.name }}
-      AGENT_OS: ${{ runner.os }}
       BUILD_REQUESTEDFOR: ${{ github.actor }}
       BUILD_DEFINITIONNAME: ${{ github.workflow }}
       SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: ${{ github.server_url }}/
@@ -65,6 +62,11 @@ jobs:
       # --- mapped from: script (Reprocess trades) ---
       - name: Reprocess trades
         timeout-minutes: 420
+        env:
+          # --- ADO variable shims (runner.* only available at step level) ---
+          BUILD_ARTIFACTSTAGINGDIRECTORY: ${{ runner.temp }}/staging
+          AGENT_NAME: ${{ runner.name }}
+          AGENT_OS: ${{ runner.os }}
         run: |
           mkdir -p "${{ runner.temp }}/staging/reprocessed"
           echo "Reprocessing trades from ${{ inputs.startDate }} to ${{ inputs.endDate }}"
