@@ -111,6 +111,7 @@ Both deploy stages use the same template (`frontend-deploy.yml`) with different 
 | **Deployment strategy** | ADO `strategy: runOnce` is implicit in GHA. GHA `environment:` provides deployment protection rules but does not have a built-in runOnce rollback mechanism. | Low — deploy steps are simple CDN uploads |
 | **Lighthouse CI results** | In ADO, Lighthouse results were part of the pipeline logs. In GHA, same behaviour — results appear in step logs. No separate reporting integration. | None |
 | **Test coverage output** | `npm test -- --ci --coverage` outputs coverage to console and files. No explicit coverage upload step in either ADO or GHA. | Pre-existing gap — preserved as-is |
+| **ADO artifact name mismatch (pre-existing, fixed)** | The ADO build template published with `artifactName-$(Build.BuildId)` suffix but the deploy template downloaded without the suffix. The GHA workflow uses the consistent suffixed name for both upload and download, correcting this pre-existing mismatch. | Pre-existing bug — corrected in GHA |
 
 ---
 
