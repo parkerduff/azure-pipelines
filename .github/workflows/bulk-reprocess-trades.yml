@@ -1,0 +1,90 @@
+# bulk-reprocess-trades CI workflow
+# Migrated from: adhoc/bulk-reprocess-trades.yml (ADO pipeline ID 115)
+# Stack: Python (pandas, requests, pyarrow)
+# Original template source: none (fully inline pipeline)
+#
+# ADO templates inlined:
+#   (none — this pipeline uses no shared templates)
+
+name: bulk-reprocess-trades
+
+on:
+  workflow_dispatch:
+    inputs:
+      startDate:
+        description: 'Start date for trade reprocessing (YYYY-MM-DD)'
+        required: true
+        default: '2024-01-01'
+        type: string
+      endDate:
+        description: 'End date for trade reprocessing (YYYY-MM-DD)'
+        required: true
+        default: '2024-01-31'
+        type: string
+      tradeTypes:
+        description: 'Trade types to reprocess (e.g., "all", "equity", "fx")'
+        required: true
+        default: 'all'
+        type: string
+
+jobs:
+  reprocess-trades:
+    name: 'Bulk reprocess trades'
+    runs-on: ubuntu-latest
+    timeout-minutes: 480
+
+    env:
+      # --- ADO variable shims (github.* available at job level) ---
+      BUILD_SOURCEBRANCH: ${{ github.ref }}
+      BUILD_SOURCEVERSION: ${{ github.sha }}
+      BUILD_BUILDID: ${{ github.run_id }}
+      BUILD_SOURCESDIRECTORY: ${{ github.workspace }}
+      BUILD_REQUESTEDFOR: ${{ github.actor }}
+      BUILD_DEFINITIONNAME: ${{ github.workflow }}
+      SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: ${{ github.server_url }}/
+      SYSTEM_TEAMPROJECT: ${{ github.repository }}
+      PIPELINE_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+    steps:
+      # --- mapped from: checkout (implicit in ADO) ---
+      - uses: actions/checkout@v4
+
+      # --- mapped from: UsePythonVersion@0 ---
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # --- mapped from: script (Install dependencies) ---
+      - name: Install dependencies
+        run: pip install pandas requests pyarrow
+
+      # --- mapped from: script (Reprocess trades) ---
+      - name: Reprocess trades
+        timeout-minutes: 420
+        env:
+          # --- ADO variable shims (runner.* only available at step level) ---
+          BUILD_ARTIFACTSTAGINGDIRECTORY: ${{ runner.temp }}/staging
+          AGENT_NAME: ${{ runner.name }}
+          AGENT_OS: ${{ runner.os }}
+          # --- inputs passed through env vars to prevent script injection ---
+          INPUT_START_DATE: ${{ inputs.startDate }}
+          INPUT_END_DATE: ${{ inputs.endDate }}
+          INPUT_TRADE_TYPES: ${{ inputs.tradeTypes }}
+        run: |
+          mkdir -p "$BUILD_ARTIFACTSTAGINGDIRECTORY/reprocessed"
+          echo "Reprocessing trades from $INPUT_START_DATE to $INPUT_END_DATE"
+          echo "Trade types: $INPUT_TRADE_TYPES"
+          python adhoc/scripts/reprocess_trades.py \
+            --start-date "$INPUT_START_DATE" \
+            --end-date "$INPUT_END_DATE" \
+            --types "$INPUT_TRADE_TYPES" \
+            --output "$BUILD_ARTIFACTSTAGINGDIRECTORY/reprocessed/"
+
+      # --- mapped from: PublishBuildArtifacts@1 ---
+      - name: Archive reprocessed data
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reprocessed-trades
+          path: ${{ runner.temp }}/staging
