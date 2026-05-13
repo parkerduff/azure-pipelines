@@ -25,7 +25,7 @@
 | ADO Stage | GHA Job | `needs:` | `if:` Condition | Environment |
 |---|---|---|---|---|
 | `Build` | `build` | — | — | — |
-| `Deploy_Dev` (`dependsOn: Build`) | `deploy-dev` | `build` | — | `dev-frontend` |
+| `Deploy_Dev` (`dependsOn: Build`) | `deploy-dev` | `build` | `github.event_name == 'push'` | `dev-frontend` |
 | `Deploy_Staging` (`dependsOn: Deploy_Dev`, condition: main branch) | `deploy-staging` | `deploy-dev` | `github.event_name == 'push' && github.ref == 'refs/heads/main'` | `staging-frontend` |
 
 ---
@@ -40,7 +40,7 @@
 | 4 | `script: npm run build:react` | `run: npm run build:react` | Parameter `${{ parameters.framework }}` resolved to `react` |
 | 5 | `script: npm run build:ssr` (conditional: `enableSSR == true`) | `run: npm run build:ssr` | Always runs — parameter was `true` in the pipeline definition |
 | 6 | `script: npm test -- --ci --coverage` | `run: npm test -- --ci --coverage` | Direct mapping |
-| 7 | `ArchiveFiles@2` (rootFolderOrFile: `build/`, archiveType: `zip`) | `run: zip -r ...` | Shell zip command; `mkdir -p` added for staging directory on fresh runner |
+| 7 | `ArchiveFiles@2` (rootFolderOrFile: `build/`, archiveType: `zip`, includeRootFolder: `false`) | `run: cd build && zip -r ... .` | Zips contents of `build/` without the root folder, matching ADO `includeRootFolder: false`; `mkdir -p` added for staging directory |
 | 8 | `script: npx lhci autorun` (Lighthouse CI) | `run: npx lhci autorun ... \|\| true` | Non-blocking audit; `|| true` preserved from ADO template |
 | 9 | `PublishBuildArtifacts@1` (artifactName: `${{ parameters.artifactName }}-$(Build.BuildId)`) | `actions/upload-artifact@v4` (name: `...-${{ github.run_id }}`) | `Build.BuildId` → `github.run_id`; `if-no-files-found: error` added |
 

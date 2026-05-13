@@ -67,12 +67,12 @@ jobs:
         run: npm test -- --ci --coverage
         working-directory: services/frontend-workbench
 
-      # --- mapped from: ArchiveFiles@2 ---
+      # --- mapped from: ArchiveFiles@2 (includeRootFolder: false) ---
       - name: Archive frontend bundle
         run: |
           mkdir -p "${{ runner.temp }}/staging"
-          cd services/frontend-workbench
-          zip -r "${{ runner.temp }}/staging/${{ env.ARTIFACT_NAME }}.zip" build/
+          cd services/frontend-workbench/build
+          zip -r "${{ runner.temp }}/staging/${{ env.ARTIFACT_NAME }}.zip" .
 
       # --- mapped from: script (npx lhci autorun) ---
       - name: Run Lighthouse CI audit
@@ -94,6 +94,7 @@ jobs:
   deploy-dev:
     name: Deploy to dev
     needs: build
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: dev-frontend
     steps:
