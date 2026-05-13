@@ -16,7 +16,7 @@
 |---|---|---|---|
 | Push branches | `main`, `master` | `main`, `master` | Identical |
 | Push paths | `services/portfolio-api/**` | `services/portfolio-api/**` | Identical |
-| PR trigger | _(none)_ | `pull_request` on `main` | **Added** — provides earlier CI feedback on PRs |
+| PR trigger | _(none)_ | `pull_request` on `main` (paths: `services/portfolio-api/**`) | **Added** — provides earlier CI feedback on PRs; scoped to same paths as push trigger |
 
 ---
 
