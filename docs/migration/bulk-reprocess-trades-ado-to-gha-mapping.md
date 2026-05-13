@@ -42,8 +42,8 @@
 | 0 | _(implicit checkout)_ | `actions/checkout@v4` | Explicit checkout required in GHA | ADO checks out automatically; GHA requires explicit step |
 | 1 | `UsePythonVersion@0` (versionSpec: 3.11) | `actions/setup-python@v5` (python-version: 3.11) | Setup Python | Direct equivalent |
 | 2 | `script: pip install pandas requests pyarrow` | `run: pip install pandas requests pyarrow` | Install dependencies | Direct translation |
-| 3 | `script: python adhoc/scripts/reprocess_trades.py ...` | `run: python adhoc/scripts/reprocess_trades.py ...` | Reprocess trades | See variable mapping below; `timeout-minutes: 420` preserved |
-| 4 | `PublishBuildArtifacts@1` | `actions/upload-artifact@v4` | Archive results | `if: always()` added so artifacts upload even on failure |
+| 3 | `script: python adhoc/scripts/reprocess_trades.py ...` | `run: python adhoc/scripts/reprocess_trades.py ...` | Reprocess trades | Inputs passed via env vars to prevent script injection; `timeout-minutes: 420` preserved |
+| 4 | `PublishBuildArtifacts@1` | `actions/upload-artifact@v4` | Archive results | `if: success() \|\| failure()` — runs on success or failure but not cancellation (matches ADO `succeededOrFailed()`) |
 
 ---
 
@@ -51,9 +51,9 @@
 
 | ADO Expression | GHA Expression | Context |
 |---|---|---|
-| `${{ parameters.startDate }}` | `${{ inputs.startDate }}` | Workflow dispatch input |
-| `${{ parameters.endDate }}` | `${{ inputs.endDate }}` | Workflow dispatch input |
-| `${{ parameters.tradeTypes }}` | `${{ inputs.tradeTypes }}` | Workflow dispatch input |
+| `${{ parameters.startDate }}` | `$INPUT_START_DATE` (via `env: INPUT_START_DATE: ${{ inputs.startDate }}`) | Passed through env var to prevent script injection |
+| `${{ parameters.endDate }}` | `$INPUT_END_DATE` (via `env: INPUT_END_DATE: ${{ inputs.endDate }}`) | Passed through env var to prevent script injection |
+| `${{ parameters.tradeTypes }}` | `$INPUT_TRADE_TYPES` (via `env: INPUT_TRADE_TYPES: ${{ inputs.tradeTypes }}`) | Passed through env var to prevent script injection |
 | `$(Build.ArtifactStagingDirectory)` | `${{ runner.temp }}/staging` | Output directory for artifacts |
 
 ---
@@ -91,8 +91,8 @@ The following environment variables are set so that any helper scripts expecting
 | Decision | Rationale |
 |---|---|
 | `mkdir -p` before reprocess step | GHA runners start fresh — `${{ runner.temp }}/staging/reprocessed/` does not exist by default |
-| `if: always()` on artifact upload | Ensures partial results are captured even if the reprocess step fails or times out |
-| Quoting `${{ inputs.* }}` in shell | Prevents word-splitting on dates/types containing spaces |
+| `if: success() \|\| failure()` on artifact upload | Captures partial results on failure but skips on cancellation (closer to ADO `succeededOrFailed()`) |
+| Inputs passed via env vars | Prevents script injection — `${{ inputs.* }}` in `run:` blocks is a [documented GHA anti-pattern](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-an-intermediate-environment-variable) |
 | `PIPELINE_URL` env var | Provides GHA-format run URL instead of ADO `_build/results` format |
 | No `on.pull_request` trigger added | This is an ad-hoc manual pipeline — PR triggers would not be meaningful |
 

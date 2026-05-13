@@ -67,19 +67,23 @@ jobs:
           BUILD_ARTIFACTSTAGINGDIRECTORY: ${{ runner.temp }}/staging
           AGENT_NAME: ${{ runner.name }}
           AGENT_OS: ${{ runner.os }}
+          # --- inputs passed through env vars to prevent script injection ---
+          INPUT_START_DATE: ${{ inputs.startDate }}
+          INPUT_END_DATE: ${{ inputs.endDate }}
+          INPUT_TRADE_TYPES: ${{ inputs.tradeTypes }}
         run: |
           mkdir -p "${{ runner.temp }}/staging/reprocessed"
-          echo "Reprocessing trades from ${{ inputs.startDate }} to ${{ inputs.endDate }}"
-          echo "Trade types: ${{ inputs.tradeTypes }}"
+          echo "Reprocessing trades from $INPUT_START_DATE to $INPUT_END_DATE"
+          echo "Trade types: $INPUT_TRADE_TYPES"
           python adhoc/scripts/reprocess_trades.py \
-            --start-date "${{ inputs.startDate }}" \
-            --end-date "${{ inputs.endDate }}" \
-            --types "${{ inputs.tradeTypes }}" \
+            --start-date "$INPUT_START_DATE" \
+            --end-date "$INPUT_END_DATE" \
+            --types "$INPUT_TRADE_TYPES" \
             --output "${{ runner.temp }}/staging/reprocessed/"
 
       # --- mapped from: PublishBuildArtifacts@1 ---
       - name: Archive reprocessed data
-        if: always()
+        if: success() || failure()
         uses: actions/upload-artifact@v4
         with:
           name: reprocessed-trades
