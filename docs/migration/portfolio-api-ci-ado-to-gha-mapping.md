@@ -80,7 +80,8 @@
 |---|---|---|
 | `dependsOn: Build` | `needs: build` | Deploy-staging depends on build |
 | _(ADO: `requireApproval: false`)_ | GHA `environment: staging` | Environment protection rules can be configured in repo settings |
-| _(none — runs on all triggers)_ | `if: github.event_name == 'push'` | **Added** — guards artifact registration to prevent PR builds from registering |
+| _(ADO had no PR trigger)_ | `if: github.event_name == 'push'` on `deploy-staging` job | **Added** — prevents deploy from running on PR builds (ADO only ran on push) |
+| _(none — runs on all triggers)_ | `if: github.event_name == 'push'` on artifact registration step | **Added** — guards artifact registration to prevent PR builds from registering |
 
 ---
 
