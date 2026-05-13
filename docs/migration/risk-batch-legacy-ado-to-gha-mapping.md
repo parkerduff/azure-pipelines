@@ -122,6 +122,8 @@ This is a minimal legacy build pipeline with no release stages or integration po
 | **Linting disabled** | The FROZEN `legacy/master-support` branch had linting disabled. This is preserved in the GHA migration (no lint step). | Low — pre-existing |
 | **`setup.py` build** | Uses `python setup.py sdist bdist_wheel` which is deprecated in favor of `python -m build`. Preserved as-is to maintain behavioral parity. | Low — pre-existing |
 | **No push trigger** | ADO had `trigger: none`. GHA adds `workflow_dispatch` + `pull_request` but no `push` trigger. Downstream jobs that triggered this pipeline in ADO will need a new trigger mechanism (e.g., `workflow_dispatch` via API). | Medium — operational |
+| **`pipefail` semantics (test step)** | The test step pipes unittest output through `tee`. In ADO, bash does not set `-o pipefail` by default, so a failing unittest would be masked by `tee` (exit 0). GHA `run:` steps default to `bash -eo pipefail`, so test failures will now correctly fail the step. This is an **unintentional behavioral improvement** — test failures silently swallowed in ADO will break the build in GHA. | Low — improvement |
+| **Working directory** | All build steps run from the repo root (no `working-directory` set). The non-legacy ADO pipeline (`services/risk-batch/azure-pipelines.yml`) passes `requirementsFile: 'services/risk-batch/requirements.txt'`, suggesting source files live in a subdirectory. However, the legacy template also uses the bare `requirements.txt` default and the ADO pipeline does not override it — this is a **pre-existing issue** faithfully migrated. If the service's Python files are under `services/risk-batch/`, steps will fail at runtime in both ADO and GHA. | Medium — pre-existing |
 
 ---
 
