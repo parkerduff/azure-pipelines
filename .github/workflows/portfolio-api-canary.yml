@@ -1,0 +1,218 @@
+# portfolio-api-canary CI workflow
+# Migrated from: services/portfolio-api/azure-pipelines-canary.yml (ADO pipeline ID 103)
+# Stack: Java 17 / Maven
+# Original template source: central templates (multi-branch — main, master, staging/preprod, staging/release-hardening)
+#
+# ADO templates inlined:
+#   - templates/build/build-java.yml       (main, master, staging/preprod, staging/release-hardening)
+#   - templates/release/release-standard.yml (main, master, staging/preprod — standard)
+#   - templates/release/release-standard.yml (staging/release-hardening — adds pre-deploy validation + health checks)
+#
+# This canary pipeline tests template branch variants before committing to them.
+# The ADO pipeline used a parameter to select which template branch to consume.
+# In GHA, template logic is inlined with conditionals based on the workflow_dispatch input.
+
+name: portfolio-api-canary
+
+on:
+  workflow_dispatch:
+    inputs:
+      templateBranch:
+        description: 'Template branch to use (mirrors ADO parameter)'
+        required: true
+        type: choice
+        default: 'main'
+        options:
+          - main
+          - master
+          - staging/preprod
+          - staging/release-hardening
+      environment:
+        description: 'Target deployment environment'
+        required: true
+        type: choice
+        default: 'dev'
+        options:
+          - dev
+          - staging
+          - prod
+
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'services/portfolio-api/**'
+      - 'templates/build/build-java.yml'
+      - 'templates/release/release-standard.yml'
+
+env:
+  ARTIFACT_NAME: portfolio-api-canary
+  JDK_VERSION: '17'
+
+jobs:
+  # ---------- Stage 1: Build ----------
+  # Maps to ADO stage "Build" which consumed templates/build/build-java.yml
+  # The build-java.yml template is identical across master, staging/preprod, and
+  # staging/release-hardening (mavenGoal: 'package', registry: artifact-registry).
+  # The main branch version differs: mavenGoals: 'clean package', registry: Artifactory.
+  build:
+    name: 'Build portfolio-api (canary — ${{ github.event.inputs.templateBranch || ''main'' }})'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- mapped from: JavaToolInstaller@0 ---
+      - name: Install JDK ${{ env.JDK_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JDK_VERSION }}
+
+      # --- mapped from: Maven@4 ---
+      # main branch template uses 'clean package'; other branches use 'package'.
+      # ADO template specifies mavenPomFile: 'pom.xml' (root-relative).
+      - name: Maven build
+        run: |
+          BRANCH="${{ github.event.inputs.templateBranch || 'main' }}"
+          if [ "$BRANCH" = "main" ]; then
+            mvn clean package -B -DskipTests=false -f pom.xml
+          else
+            mvn package -B -DskipTests=false -f pom.xml
+          fi
+
+      # --- mapped from: Maven@4 publishJUnitResults ---
+      # ADO Maven@4 natively publishes JUnit results; GHA has no built-in
+      # test results viewer. Upload surefire results as artifacts.
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: '**/surefire-reports/TEST-*.xml'
+          if-no-files-found: ignore
+
+      # --- mapped from: script 'Stage build artifacts' ---
+      # ADO template uses root-relative 'cp target/*.jar' — matched here.
+      - name: Stage build artifacts
+        run: |
+          mkdir -p "${{ runner.temp }}/staging"
+          cp target/*.jar "${{ runner.temp }}/staging/" 2>/dev/null || true
+          cp target/*.war "${{ runner.temp }}/staging/" 2>/dev/null || true
+
+      # --- mapped from: PublishBuildArtifacts@1 ---
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ runner.temp }}/staging
+          if-no-files-found: warn
+
+      # --- mapped from: publish_artifact.py (Artifactory / artifact-registry registration) ---
+      # ADO pipelines had trigger: none (manual), so all runs were intentional pushes.
+      # In GHA, guard registration to non-PR events to prevent PR artifact registration.
+      # main branch uses "Artifactory" registry; other branches use "artifact-registry".
+      - name: Register artifact in registry
+        if: github.event_name != 'pull_request'
+        run: |
+          BRANCH="${{ github.event.inputs.templateBranch || 'main' }}"
+          if [ "$BRANCH" = "main" ]; then
+            REGISTRY="Artifactory"
+          else
+            REGISTRY="artifact-registry"
+          fi
+          python build-tools/scripts/publish_artifact.py \
+            --name "${{ env.ARTIFACT_NAME }}" \
+            --registry "$REGISTRY" \
+            --build-id "${{ github.run_id }}"
+        env:
+          BUILD_SOURCEBRANCH: ${{ github.ref }}
+          BUILD_SOURCEVERSION: ${{ github.sha }}
+          AGENT_NAME: ${{ runner.name }}
+          BUILD_ARTIFACTSTAGINGDIRECTORY: ${{ runner.temp }}/staging
+
+  # ---------- Stage 2: Deploy ----------
+  # Maps to ADO release-standard.yml template consumption.
+  # On staging/release-hardening: adds pre-deploy validation and retrying health checks.
+  # On all other branches: standard deploy (no validation, no health checks).
+  # Only runs on workflow_dispatch (not on pull_request).
+  deploy:
+    name: 'Deploy to ${{ github.event.inputs.environment || ''dev'' }}'
+    needs: build
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- mapped from: download: current ---
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ runner.temp }}/staging
+
+      # --- mapped from: compare_build_outputs.py (pre-deploy validation) ---
+      # Only present in staging/release-hardening branch template.
+      - name: Pre-deploy artifact validation
+        if: github.event.inputs.templateBranch == 'staging/release-hardening'
+        run: |
+          python build-tools/scripts/compare_build_outputs.py \
+            --artifact "${{ env.ARTIFACT_NAME }}" \
+            --baseline validation/baselines/
+        env:
+          BUILD_ARTIFACTSTAGINGDIRECTORY: ${{ runner.temp }}/staging
+
+      # --- mapped from: deployment script ---
+      - name: Execute deployment
+        run: |
+          echo "Deploying ${{ env.ARTIFACT_NAME }} to ${{ github.event.inputs.environment || 'dev' }}"
+          echo "Strategy: rolling"
+          echo "Template branch: ${{ github.event.inputs.templateBranch || 'main' }}"
+
+      # --- mapped from: health check script (staging/release-hardening only) ---
+      # The hardened release template retries health checks up to 5 times with 15s intervals.
+      - name: Post-deploy health check (hardened)
+        if: github.event.inputs.templateBranch == 'staging/release-hardening'
+        run: |
+          RETRY=0
+          MAX_RETRY=5
+          until curl -sf http://localhost:8080/health; do
+            RETRY=$((RETRY + 1))
+            if [ $RETRY -ge $MAX_RETRY ]; then
+              echo "Health check failed after $MAX_RETRY attempts"
+              exit 1
+            fi
+            echo "Health check retry $RETRY/$MAX_RETRY..."
+            sleep 15
+          done
+
+      # --- mapped from: notify_release_orchestrator.py (D2 notification) ---
+      # The script constructs pipeline URLs from ADO env vars. We provide
+      # PIPELINE_URL directly so the correct GHA URL is used.
+      - name: Notify D2
+        run: |
+          python build-tools/scripts/notify_release_orchestrator.py \
+            --service "${{ env.ARTIFACT_NAME }}" \
+            --env "${{ github.event.inputs.environment || 'dev' }}" \
+            --build-id "${{ github.run_id }}" \
+            --status success
+        env:
+          BUILD_REQUESTEDFOR: ${{ github.actor }}
+          SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: ${{ github.server_url }}/
+          SYSTEM_TEAMPROJECT: ${{ github.repository }}
+          PIPELINE_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      # --- mapped from: generate_attestation.py ---
+      - name: Generate compliance attestation
+        run: |
+          mkdir -p "${{ runner.temp }}/staging"
+          python build-tools/scripts/generate_attestation.py \
+            --artifact "${{ env.ARTIFACT_NAME }}" \
+            --env "${{ github.event.inputs.environment || 'dev' }}" \
+            --build-id "${{ github.run_id }}"
+        env:
+          BUILD_SOURCEBRANCH: ${{ github.ref }}
+          BUILD_SOURCEVERSION: ${{ github.sha }}
+          BUILD_DEFINITIONNAME: ${{ github.workflow }}
+          AGENT_OS: ${{ runner.os }}
+          BUILD_ARTIFACTSTAGINGDIRECTORY: ${{ runner.temp }}/staging
