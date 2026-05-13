@@ -1,0 +1,72 @@
+# risk-batch-legacy CI workflow
+# Migrated from: services/risk-batch/azure-pipelines-legacy.yml (ADO pipeline ID 105)
+# Stack: Python (legacy)
+# Original template source: legacy/master-support (FROZEN branch)
+#
+# ADO templates inlined:
+#   - templates/legacy/build-python-legacy.yml
+#
+# Notes:
+#   - The ADO pipeline uses trigger: none (manually triggered / downstream triggered).
+#     This workflow uses workflow_dispatch for the same manual trigger behavior.
+#   - pull_request trigger added intentionally to provide earlier CI feedback.
+#   - The FROZEN legacy/master-support branch has linting disabled and uses
+#     unittest (not pytest). This migration preserves that behavior.
+#   - Python version overridden to 3.9 via pipeline parameters (template default
+#     was also 3.9; the branch-level default of 3.8 is not used by this pipeline).
+
+name: risk-batch-legacy CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'services/risk-batch/**'
+
+env:
+  PYTHON_VERSION: '3.9'
+  ARTIFACT_NAME: 'risk-batch-legacy'
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Stage: Build (maps to ADO stage "Build" / job "legacy_build")
+  # --------------------------------------------------------------------------
+  build:
+    name: Build risk-batch-legacy
+    runs-on: ubuntu-latest
+
+    steps:
+      # --- Checkout ---
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # --- mapped from: UsePythonVersion@0 ---
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      # --- mapped from: script (Install dependencies) ---
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # --- mapped from: script (Run tests — unittest) ---
+      - name: Run tests (unittest)
+        run: |
+          python -m unittest discover -s tests -p "test_*.py" -v 2>&1 | tee test-output.txt
+
+      # --- mapped from: script (Build package) ---
+      - name: Build package
+        run: |
+          python setup.py sdist bdist_wheel
+
+      # --- mapped from: PublishBuildArtifacts@1 ---
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: dist/
