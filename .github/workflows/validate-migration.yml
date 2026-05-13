@@ -28,10 +28,7 @@ jobs:
 
       - name: Install actionlint
         run: |
-          curl -sSLo actionlint.tar.gz \
-            "https://github.com/rhysd/actionlint/releases/latest/download/actionlint_$(curl -sSL https://api.github.com/repos/rhysd/actionlint/releases/latest | jq -r '.tag_name' | sed 's/v//')_linux_amd64.tar.gz"
-          tar xzf actionlint.tar.gz actionlint
-          chmod +x actionlint
+          bash <(curl -sSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
           sudo mv actionlint /usr/local/bin/
 
       - name: Lint all GHA workflows
