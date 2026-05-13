@@ -1,0 +1,135 @@
+# portfolio-api-ci CI workflow
+# Migrated from: services/portfolio-api/azure-pipelines.yml (ADO pipeline ID 102)
+# Stack: Java 17 / Maven
+# Original template source: master (legacy branch)
+#
+# ADO templates inlined:
+#   - templates/build/build-java.yml
+#   - templates/release/release-standard.yml
+
+name: portfolio-api-ci
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'services/portfolio-api/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'services/portfolio-api/**'
+
+env:
+  ARTIFACT_NAME: portfolio-api-dist
+
+jobs:
+  build:
+    name: Build portfolio-api
+    runs-on: ubuntu-latest
+    steps:
+      # --- mapped from: implicit checkout ---
+      - uses: actions/checkout@v4
+
+      # --- mapped from: JavaToolInstaller@0 ---
+      - name: Install JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # --- mapped from: Maven@4 (goal: package) ---
+      - name: Maven package
+        run: mvn -B -DskipTests=false package
+
+      # --- mapped from: Maven@4 (publishJUnitResults: true) ---
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            **/surefire-reports/TEST-*.xml
+          if-no-files-found: ignore
+
+      # --- mapped from: script (stage build artifacts) ---
+      - name: Stage build artifacts
+        run: |
+          mkdir -p "${{ runner.temp }}/staging"
+          cp target/*.jar "${{ runner.temp }}/staging/" 2>/dev/null || true
+          cp target/*.war "${{ runner.temp }}/staging/" 2>/dev/null || true
+
+      # --- mapped from: PublishBuildArtifacts@1 ---
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ runner.temp }}/staging/
+
+      # --- mapped from: script (register artifact in artifact-registry) ---
+      - name: Register artifact in artifact-registry
+        if: github.event_name == 'push'
+        run: |
+          python build-tools/scripts/publish_artifact.py \
+            --name "${{ env.ARTIFACT_NAME }}" \
+            --registry artifact-registry \
+            --build-id "${{ github.run_id }}"
+        env:
+          BUILD_SOURCEBRANCH: ${{ github.ref }}
+          BUILD_SOURCEVERSION: ${{ github.sha }}
+          AGENT_NAME: ${{ runner.name }}
+          BUILD_ARTIFACTSTAGINGDIRECTORY: ${{ runner.temp }}/staging
+
+  deploy-staging:
+    name: Deploy to staging
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      # --- mapped from: implicit checkout (scripts needed) ---
+      - uses: actions/checkout@v4
+
+      # --- mapped from: download: current artifact ---
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ runner.temp }}/staging
+
+      # --- mapped from: script (execute deployment) ---
+      - name: Execute deployment
+        run: |
+          echo "Deploying ${{ env.ARTIFACT_NAME }} to staging"
+          echo "Strategy: rolling"
+
+      # --- mapped from: script (notify release-orchestrator) ---
+      - name: Notify release-orchestrator
+        run: |
+          python build-tools/scripts/notify_release_orchestrator.py \
+            --service "${{ env.ARTIFACT_NAME }}" \
+            --env staging \
+            --build-id "${{ github.run_id }}" \
+            --status success
+        env:
+          BUILD_REQUESTEDFOR: ${{ github.actor }}
+          SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: "${{ github.server_url }}/"
+          SYSTEM_TEAMPROJECT: ${{ github.repository }}
+          PIPELINE_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+      # --- mapped from: script (generate compliance attestation) ---
+      - name: Generate compliance attestation
+        run: |
+          mkdir -p "${{ runner.temp }}/staging"
+          python build-tools/scripts/generate_attestation.py \
+            --artifact "${{ env.ARTIFACT_NAME }}" \
+            --env staging \
+            --build-id "${{ github.run_id }}"
+        env:
+          BUILD_SOURCEBRANCH: ${{ github.ref }}
+          BUILD_SOURCEVERSION: ${{ github.sha }}
+          BUILD_DEFINITIONNAME: ${{ github.workflow }}
+          AGENT_OS: ${{ runner.os }}
+          BUILD_ARTIFACTSTAGINGDIRECTORY: ${{ runner.temp }}/staging
